@@ -20,9 +20,18 @@
         const query = resultParams.toString();
         const url = base.replace(/\/$/, '') + '/LeantimeLib/projectIntegrations/' + encodeURIComponent(projectId) + (query ? '?' + query : '');
         fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(function (response) {
-                if (!response.ok) throw new Error('The Library endpoint returned HTTP ' + response.status + '.');
-                return response.json();
+            .then(async function (response) {
+                const responseText = await response.text();
+                let result = null;
+                try { result = responseText ? JSON.parse(responseText) : null; } catch (ignored) {}
+                if (!response.ok) {
+                    const detail = result && (result.error || result.message)
+                        ? String(result.error || result.message)
+                        : responseText.replace(/\s+/g, ' ').trim().slice(0, 400);
+                    throw new Error('The Library endpoint returned HTTP ' + response.status + (detail ? ': ' + detail : '.'));
+                }
+                if (!result) throw new Error('The Library endpoint returned invalid JSON: ' + responseText.replace(/\s+/g, ' ').trim().slice(0, 400));
+                return result;
             })
             .then(function (result) {
                 if (!result || typeof result.html !== 'string') throw new Error('The Library endpoint returned an invalid response.');

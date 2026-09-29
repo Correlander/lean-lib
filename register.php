@@ -21,6 +21,6 @@ EventDispatcher::add_event_listener(
 );
 
 EventDispatcher::add_event_listener(
-    'leantime.domain.tickets.templates.submodules.ticketdetails.beforeEndRightColumn',
+    'leantime.domain.tickets.templates.submodules.ticketDetails.beforeEndRightColumn',
     [TodoSectionRegistry::class, 'renderSections']
 );
