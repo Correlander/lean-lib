@@ -9,6 +9,10 @@ class TodoFieldRegistry
 {
     private const SETTING = 'leantimelib.todo.detail.fieldLayout';
     private const PROJECT_SUFFIX = '.leantimelib.todo.detail.fieldLayout';
+    private const SECTION_WIDGETS = [
+        'organization' => ['label' => 'Organization', 'zone' => 'sidebar', 'kind' => 'sectionHeader', 'children' => ['type', 'project', 'milestone', 'sprint', 'related']],
+        'schedule' => ['label' => 'Schedule', 'zone' => 'sidebar', 'kind' => 'sectionHeader', 'children' => ['workStart', 'workEnd', 'plannedHours']],
+    ];
 
     private const FIELDS = [
         'headline' => ['label' => 'Title', 'zone' => 'main', 'selector' => '[name="headline"]'],
@@ -43,6 +47,7 @@ class TodoFieldRegistry
                 'kind' => 'sections', 'enabled' => $section['enabled'], 'defaultEnabled' => $section['defaultEnabled'],
             ];
         }
+        foreach (self::SECTION_WIDGETS as $id => $section) $fields[$id] = $section + ['icon' => '', 'enabled' => true, 'defaultEnabled' => true];
         return $fields;
     }
 
@@ -66,7 +71,7 @@ class TodoFieldRegistry
         }
         foreach ($available as $id => $field) {
             if (! in_array($id, $layout['main'], true) && ! in_array($id, $layout['sidebar'], true) && ! in_array($id, $layout['hidden'], true)) {
-                $defaultZone = ($field['kind'] ?? '') === 'sections' && ! ($field['enabled'] ?? true) ? 'hidden' : $field['zone'];
+                $defaultZone = in_array($field['kind'] ?? '', ['sections', 'sectionHeader'], true) && ! ($field['enabled'] ?? true) ? 'hidden' : $field['zone'];
                 $layout[$defaultZone][] = $id;
             }
         }
@@ -86,7 +91,7 @@ class TodoFieldRegistry
         }
         foreach ($available as $id => $field) {
             if (! in_array($id, $normalized['main'], true) && ! in_array($id, $normalized['sidebar'], true) && ! in_array($id, $normalized['hidden'], true)) {
-                $defaultZone = ($field['kind'] ?? '') === 'sections' && ! ($field['enabled'] ?? true) ? 'hidden' : $field['zone'];
+                $defaultZone = in_array($field['kind'] ?? '', ['sections', 'sectionHeader'], true) && ! ($field['enabled'] ?? true) ? 'hidden' : $field['zone'];
                 $normalized[$defaultZone][] = $id;
             }
         }

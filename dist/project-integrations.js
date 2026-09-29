@@ -101,8 +101,12 @@
 
     function getFieldState(control) {
         const ids = function (zone) {
-            const selector = zone === 'main' ? '[data-widget-kind="fields"]' : '[data-widget-kind="fields"], [data-widget-kind="sections"]';
-            return Array.from(control.querySelector('[data-library-zone="' + zone + '"]').querySelectorAll(selector)).map((item) => item.dataset.widgetId);
+            const result = [];
+            control.querySelectorAll('[data-library-zone="' + zone + '"]').forEach(function (list) {
+                list.querySelectorAll(':scope > [data-widget-kind="fields"], :scope > [data-widget-kind="sections"]').forEach((item) => result.push(item.dataset.widgetId));
+            });
+            control.querySelectorAll('[data-section-preview][data-section-zone="' + zone + '"]').forEach((section) => result.push(section.dataset.sectionPreview));
+            return result;
         };
         return { main: ids('main'), sidebar: ids('sidebar'), hidden: ids('parked') };
     }

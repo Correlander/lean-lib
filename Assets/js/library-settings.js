@@ -53,6 +53,21 @@
                     : ['sidebar', 'parked'].includes(zone.dataset.libraryZone);
             if (!allowed) return;
             event.preventDefault();
+            if (kind === 'sectionHeader') {
+                const zoneName = zone.dataset.libraryZone;
+                const targetSection = event.target.closest('[data-section-preview]');
+                if (targetSection && targetSection !== dragged && targetSection.dataset.sectionZone === zoneName) {
+                    const after = event.clientY > targetSection.getBoundingClientRect().top + targetSection.getBoundingClientRect().height / 2;
+                    targetSection.parentElement.insertBefore(dragged, after ? targetSection.nextSibling : targetSection);
+                } else {
+                    const target = zoneName === 'sidebar'
+                        ? workspace.querySelector('.lt-library-ticket__sidebar')
+                        : workspace.querySelector('.lt-library-ticket__parked > [data-library-zone="parked"]');
+                    if (target) target.appendChild(dragged);
+                }
+                setSectionZone(dragged, zoneName);
+                return;
+            }
             const target = event.target.closest('[data-widget-kind]');
             if (target === dragged) return;
             if (!target || target.dataset.widgetKind !== kind || target.parentElement !== zone) {
@@ -66,6 +81,19 @@
         });
         workspace.addEventListener('drop', function (event) { if (event.target.closest('[data-library-zone]')) event.preventDefault(); });
         workspace.addEventListener('click', function (event) {
+            const sectionButton = event.target.closest('[data-section-park]');
+            if (sectionButton) {
+                const section = sectionButton.closest('[data-section-preview]');
+                if (!section) return;
+                const parked = section.dataset.sectionZone !== 'parked';
+                const target = parked
+                    ? workspace.querySelector('.lt-library-ticket__parked > [data-library-zone="parked"]')
+                    : workspace.querySelector('.lt-library-ticket__sidebar');
+                if (!target) return;
+                target.appendChild(section);
+                setSectionZone(section, parked ? 'parked' : 'sidebar');
+                return;
+            }
             const button = event.target.closest('[data-widget-park], [data-widget-add]');
             if (!button) return;
             const item = button.closest('[data-widget-kind]');
@@ -75,6 +103,25 @@
             const zone = workspace.querySelector('[data-library-zone="' + name + '"]');
             if (zone) { zone.appendChild(item); place(item, zone); }
         });
+
+        function setSectionZone(section, zoneName) {
+            const parked = zoneName === 'parked';
+            const sectionId = section.dataset.sectionPreview;
+            section.dataset.sectionZone = zoneName;
+            section.toggleAttribute('data-parked-section', parked);
+            const button = section.querySelector('[data-section-park]');
+            if (button) {
+                button.textContent = parked ? '+' : '×';
+                button.title = (parked ? 'Restore ' : 'Park ') + (sectionId === 'organization' ? 'Organization' : 'Schedule') + ' section';
+            }
+            const headerInput = section.querySelector('h3 input[name^="fieldLayout["]');
+            if (headerInput) headerInput.name = 'fieldLayout[' + zoneName + '][]';
+            const childZone = section.querySelector('[data-section-children]');
+            if (childZone) childZone.dataset.libraryZone = zoneName;
+            section.querySelectorAll('[data-widget-kind="fields"]').forEach(function (item) {
+                if (childZone) place(item, childZone);
+            });
+        }
         if (form) form.addEventListener('submit', function () {
             workspace.querySelectorAll('[data-widget-kind]').forEach(function (item) {
                 const zone = item.closest('[data-library-zone]');

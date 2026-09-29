@@ -89,6 +89,10 @@
             sidebarZone.dataset.leantimelibFieldZone = 'sidebar';
             sidebar.insertBefore(sidebarZone, sidebar.firstChild);
         }
+        const nativeSections = {
+            organization: details.querySelector('#accordion_content-tickets-organization'),
+            schedule: details.querySelector('#accordion_content-tickets-dates')
+        };
 
         Object.entries(nativeFields).forEach(([id, fieldSelector]) => {
             let field = details.querySelector('[data-leantimelib-field="' + id + '"]');
@@ -104,7 +108,11 @@
             if (!field) return;
             const requestedZone = (layout.main || []).includes(id) ? 'main'
                 : (layout.sidebar || []).includes(id) ? 'sidebar' : 'hidden';
-            const target = requestedZone === 'sidebar' ? sidebarZone : mainZone;
+            const sectionId = ['type', 'project', 'milestone', 'sprint', 'related'].includes(id) ? 'organization'
+                : (['workStart', 'workEnd', 'plannedHours'].includes(id) ? 'schedule' : null);
+            const target = requestedZone === 'sidebar' && sectionId && nativeSections[sectionId]
+                ? nativeSections[sectionId]
+                : (requestedZone === 'sidebar' ? sidebarZone : mainZone);
             if (field.parentElement !== target) target.appendChild(field);
             field.hidden = requestedZone === 'hidden';
             field.setAttribute('aria-hidden', requestedZone === 'hidden' ? 'true' : 'false');
@@ -129,24 +137,47 @@
             }
         });
 
-        if (details.dataset.leantimelibNativeAccordionsRemoved !== '1') {
-            ['organization', 'dates'].forEach((name) => {
-                const heading = details.querySelector('#accordion_link_tickets-' + name);
-                const row = heading && heading.closest('.row.marginBottom');
-                if (row) row.remove();
-            });
-            details.dataset.leantimelibNativeAccordionsRemoved = '1';
-        }
+        ['organization', 'schedule'].forEach((sectionId) => {
+            const coreId = sectionId === 'organization' ? 'organization' : 'dates';
+            const heading = details.querySelector('#accordion_link_tickets-' + coreId);
+            const row = heading && heading.closest('.row.marginBottom');
+            if (!row) return;
+            const visible = (layout.sidebar || []).includes(sectionId);
+            row.hidden = !visible;
+            row.setAttribute('aria-hidden', visible ? 'false' : 'true');
+        });
 
         // Keep each zone in the saved order. Hidden controls remain in the form,
         // so existing values still submit when a widget is parked.
         ['main', 'sidebar'].forEach((zoneName) => {
             const zone = zoneName === 'main' ? mainZone : sidebarZone;
             const order = layout[zoneName] || [];
-            const nodes = new Map(Array.from(zone.children).map((node) => [node.dataset.leantimelibField || node.dataset.leantimelibSection, node]));
+            const zones = zoneName === 'sidebar' ? [sidebarZone, nativeSections.organization, nativeSections.schedule].filter(Boolean) : [zone];
+            const nodes = new Map(zones.flatMap((parent) => Array.from(parent.children)).map((node) => [node.dataset.leantimelibField || node.dataset.leantimelibSection, node]));
             const ordered = order.map((id) => nodes.get(id)).filter(Boolean);
             nodes.forEach((node) => { if (!ordered.includes(node)) ordered.push(node); });
-            ordered.forEach((node, index) => { if (zone.children[index] !== node) zone.insertBefore(node, zone.children[index] || null); });
+            const headerRank = { organization: order.indexOf('organization'), schedule: order.indexOf('schedule') };
+            const sectionRows = ['organization', 'schedule'].sort((a, b) => (headerRank[a] < 0 ? 999 : headerRank[a]) - (headerRank[b] < 0 ? 999 : headerRank[b]));
+            let sectionAnchor = sidebarZone.nextSibling;
+            sectionRows.forEach((id) => {
+                const header = details.querySelector('#accordion_link_tickets-' + (id === 'organization' ? 'organization' : 'dates'));
+                const row = header && header.closest('.row.marginBottom');
+                if (row && order.includes(id)) {
+                    sidebar.insertBefore(row, sectionAnchor);
+                    sectionAnchor = row.nextSibling;
+                }
+            });
+            const groupedIds = new Set(['organization', 'schedule', 'type', 'project', 'milestone', 'sprint', 'related', 'workStart', 'workEnd', 'plannedHours']);
+            ordered.filter((node) => !groupedIds.has(node.dataset.leantimelibField || node.dataset.leantimelibSection)).forEach((node, index) => { if (zone.children[index] !== node) zone.insertBefore(node, zone.children[index] || null); });
+            if (zoneName === 'sidebar') {
+                ['organization', 'schedule'].forEach((id) => {
+                    const parent = nativeSections[id];
+                    if (!parent) return;
+                    const sectionOrder = order.filter((fieldId) => parent.querySelector('[data-leantimelib-field="' + fieldId + '"]'));
+                    const childNodes = sectionOrder.map((fieldId) => parent.querySelector('[data-leantimelib-field="' + fieldId + '"]')).filter(Boolean);
+                    childNodes.forEach((node, index) => { if (parent.children[index] !== node) parent.insertBefore(node, parent.children[index] || null); });
+                });
+            }
         });
     }
 
