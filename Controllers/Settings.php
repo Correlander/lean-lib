@@ -43,6 +43,7 @@ class Settings extends Controller
     #[RequiresPermission(PluginsPermissions::MANAGE, global: true)]
     public function post($params)
     {
+        $wantsJson = request()->expectsJson();
         $input = $this->incomingRequest->only(['tabOrder', 'tabEnabled', 'fieldLayout', 'sidebarSectionsPresent', 'sidebarSections', 'hideExploreApps', 'fastOnboarding', 'resetLayout']);
         try {
             $validated = ValidationException::validate($input, [
@@ -77,6 +78,8 @@ class Settings extends Controller
         } catch (ValidationException $exception) {
             $errors = $exception->getErrorData();
             $first = reset($errors);
+            $message = is_array($first) ? reset($first) : 'Check the submitted Library settings and try again.';
+            if ($wantsJson) return response()->json(['error' => $message, 'errors' => $errors], 422);
             $this->assignPageData(is_array($first) ? reset($first) : 'Check the tab order and try again.');
 
             return $this->tpl->display('leantimelib.settings');
@@ -84,6 +87,7 @@ class Settings extends Controller
 
         if (! filter_var($validated['resetLayout'] ?? false, FILTER_VALIDATE_BOOLEAN)
             && empty($validated['tabEnabled'])) {
+            if ($wantsJson) return response()->json(['error' => 'Keep at least one To-do tab visible.'], 422);
             $this->assignPageData('Keep at least one To-do tab visible.');
             return $this->tpl->display('leantimelib.settings');
         }
@@ -92,12 +96,7 @@ class Settings extends Controller
             $this->registry->resetLayout();
             $this->sidebarSectionRegistry->resetDefinitions();
             $this->fieldRegistry->resetLayout();
-            $preferencesSaved = $this->settings->saveSetting('leantimelib.ui.hideExploreApps', filter_var($validated['hideExploreApps'] ?? false, FILTER_VALIDATE_BOOLEAN) ? '1' : '0')
-                && $this->settings->saveSetting('leantimelib.ui.fastOnboarding', filter_var($validated['fastOnboarding'] ?? false, FILTER_VALIDATE_BOOLEAN) ? '1' : '0');
-            if (! $preferencesSaved) {
-                $this->assignPageData('The Library preferences could not be saved.');
-                return $this->tpl->display('leantimelib.settings');
-            }
+            if ($wantsJson) return response()->json(['saved' => true, 'reset' => true]);
             $this->tpl->setNotification('To-do layout reset to defaults.', 'success');
 
             return Frontcontroller::redirect(BASE_URL.'/LeantimeLib/settings');
@@ -134,11 +133,13 @@ class Settings extends Controller
         }
         if (! $saved) {
             if (! $failureLogged) Log::error('Leantime Library To-do layout order could not be persisted.');
+            if ($wantsJson) return response()->json(['error' => 'The Library settings could not be saved.'], 500);
             $this->assignPageData('The Library settings could not be saved.');
 
             return $this->tpl->display('leantimelib.settings');
         }
 
+        if ($wantsJson) return response()->json(['saved' => true]);
         $this->tpl->setNotification('Library settings saved.', 'success');
 
         return Frontcontroller::redirect(BASE_URL.'/LeantimeLib/settings');

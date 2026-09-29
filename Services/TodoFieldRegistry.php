@@ -107,6 +107,7 @@ class TodoFieldRegistry
         $defaultOrder = ['organization', 'type', 'project', 'milestone', 'sprint', 'related', 'schedule', 'workStart', 'workEnd', 'plannedHours'];
         foreach (array_keys($available) as $id) if (! in_array($id, $defaultOrder, true)) $defaultOrder[] = $id;
         foreach ($defaultOrder as $id) {
+            if (! isset($available[$id])) continue;
             $field = $available[$id];
             if (! in_array($id, $layout['main'], true) && ! in_array($id, $layout['sidebar'], true)
                 && ! in_array($id, $layout['auxiliary'], true) && ! in_array($id, $layout['hidden'], true)) {

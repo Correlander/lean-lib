@@ -6,6 +6,62 @@
         workspace.dataset.workspaceInstalled = '1';
         let dragged = null;
         const form = workspace.closest('form');
+        const isGlobal = !!(form && form.hasAttribute('data-library-settings-form'));
+        const autosaveStatus = isGlobal ? form.querySelector('[data-autosave-status]') : null;
+        let saveTimer = null;
+        let saving = false;
+        let saveAgain = false;
+        let draggedChanged = false;
+
+        const iconChoices = [
+            'fas fa-folder-open', 'fas fa-calendar-days', 'fas fa-code-branch', 'fas fa-gear',
+            'fas fa-list-check', 'fas fa-flag', 'fas fa-clock', 'fas fa-link', 'fas fa-book',
+            'fas fa-circle-info', 'fas fa-tags', 'fas fa-users', 'fas fa-comments', 'fas fa-paperclip',
+            'fas fa-chart-line', 'fas fa-rocket', 'fas fa-shield-halved', 'fas fa-clipboard',
+            'fas fa-sitemap', 'fas fa-layer-group', 'fas fa-bug', 'fas fa-check', 'fas fa-box'
+        ];
+
+        function setStatus(message, state) {
+            if (!autosaveStatus) return;
+            autosaveStatus.textContent = message;
+            autosaveStatus.dataset.saveState = state || '';
+        }
+
+        function hasBlankNewSection() {
+            return Array.from(workspace.querySelectorAll('[data-section-new] [data-section-label-input]'))
+                .some((input) => !input.value.trim());
+        }
+
+        function initializeIconPicker(button) {
+            if (!button || button.dataset.iconPickerReady === '1' || !window.jQuery || !window.jQuery.fn.iconpicker) return;
+            const id = button.dataset.sectionIconButton;
+            const input = workspace.querySelector('[data-section-icon-input="' + CSS.escape(id) + '"]');
+            if (!input) return;
+            const choices = iconChoices.map((title) => ({ title: title, searchTerms: [title.replace(/^\w+\s+fa-/, '').replace(/-/g, ' '), 'icons'] }));
+            const picker = window.jQuery(button);
+            button.dataset.iconPickerReady = '1';
+            picker.iconpicker({
+                component: '.btn > .iconPlaceholder',
+                input: '#' + CSS.escape(input.id),
+                inputSearch: true,
+                defaultValue: 'fas fa-folder-open',
+                selected: input.value || 'fas fa-folder-open',
+                showFooter: false,
+                searchInFooter: false,
+                icons: choices
+            });
+            picker.on('iconpickerSelected', function (event) {
+                input.value = event.iconpickerValue || '';
+                const icon = button.querySelector('.iconPlaceholder > i');
+                if (icon) {
+                    icon.className = input.value;
+                    icon.hidden = !input.value;
+                }
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+        }
+
+        workspace.querySelectorAll('[data-section-icon-button]').forEach(initializeIconPicker);
 
         function groupZone(sectionId) {
             return sectionId ? workspace.querySelector('[data-section-children="' + CSS.escape(sectionId) + '"]') : null;
@@ -61,10 +117,173 @@
             }
         }
 
+        function scheduleSave(immediate) {
+            if (!isGlobal) return;
+            if (hasBlankNewSection()) {
+                setStatus('Name the new section or leave it blank to discard it.', 'pending');
+                return;
+            }
+            window.clearTimeout(saveTimer);
+            saveTimer = window.setTimeout(saveSettings, immediate ? 0 : 450);
+        }
+
+        function syncPlacementInputs() {
+            workspace.querySelectorAll('[data-widget-kind]').forEach(function (item) {
+                const zone = item.closest('[data-library-zone]');
+                if (zone) place(item, zone);
+            });
+        }
+
+        async function saveSettings() {
+            if (!isGlobal) return;
+            if (saving) { saveAgain = true; return; }
+            if (hasBlankNewSection()) return;
+            syncPlacementInputs();
+            saving = true;
+            setStatus('Saving…', 'saving');
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: new FormData(form)
+                });
+                const result = await response.json().catch(function () { return {}; });
+                if (!response.ok || result.saved !== true) {
+                    const details = result.errors && typeof result.errors === 'object'
+                        ? Object.values(result.errors).flatMap((messages) => Array.isArray(messages) ? messages : [messages]).join(' ')
+                        : '';
+                    throw new Error([result.error || result.message || 'The server did not confirm the save.', details].filter(Boolean).join(' '));
+                }
+                workspace.querySelectorAll('[data-section-new]').forEach(function (section) {
+                    const label = section.querySelector('[data-section-label-input]');
+                    if (label) label.dataset.originalLabel = label.value.trim();
+                    delete section.dataset.sectionNew;
+                });
+                setStatus('All changes saved.', 'saved');
+            } catch (error) {
+                setStatus(error.message, 'error');
+                console.error('[LeantimeLib settings autosave]', error);
+            } finally {
+                saving = false;
+                if (saveAgain) {
+                    saveAgain = false;
+                    scheduleSave(true);
+                }
+            }
+        }
+
+        function resetLayout(button) {
+            if (!isGlobal || !button) return;
+            button.disabled = true;
+            setStatus('Restoring To-do layout defaults…', 'saving');
+            const body = new FormData();
+            const csrf = form.querySelector('input[name="_token"]');
+            if (csrf) body.append('_token', csrf.value);
+            body.append('resetLayout', '1');
+            fetch(form.action, {
+                method: 'POST', credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: body
+            }).then(async function (response) {
+                const result = await response.json().catch(function () { return {}; });
+                if (!response.ok || result.reset !== true) throw new Error(result.error || result.message || 'The server did not confirm the reset.');
+                window.location.reload();
+            }).catch(function (error) {
+                button.disabled = false;
+                setStatus(error.message, 'error');
+                console.error('[LeantimeLib settings reset]', error);
+            });
+        }
+
+        function discardNewSection(section) {
+            if (!section || !section.hasAttribute('data-section-new')) return;
+            const label = section.querySelector('[data-section-label-input]');
+            if (label && label.value.trim() !== '') return;
+            section.remove();
+            setStatus('Empty section discarded.', 'saved');
+            scheduleSave();
+        }
+
+        function addSection() {
+            const id = 'sidebar-' + (window.crypto && window.crypto.randomUUID
+                ? window.crypto.randomUUID().replace(/-/g, '')
+                : Math.random().toString(36).slice(2, 14));
+            const section = document.createElement('section');
+            section.className = 'lt-library-preview-section';
+            section.dataset.widgetKind = 'sectionHeader';
+            section.dataset.widgetId = id;
+            section.dataset.sectionPreview = id;
+            section.dataset.sectionZone = 'sidebar';
+            section.dataset.sectionNew = '1';
+            section.draggable = true;
+
+            const heading = document.createElement('h3');
+            const caret = document.createElement('i');
+            caret.className = 'fa fa-angle-down';
+            caret.setAttribute('aria-hidden', 'true');
+            const title = document.createElement('input');
+            title.type = 'text';
+            title.maxLength = 80;
+            title.placeholder = 'Section name';
+            title.setAttribute('aria-label', 'Section name');
+            title.dataset.sectionLabelInput = id;
+            title.dataset.originalLabel = '';
+            title.name = 'sidebarSections[' + id + '][label]';
+            title.required = true;
+
+            const picker = document.createElement('div');
+            picker.className = 'btn-group inlineDropDownContainerLeft lt-library-icon-picker';
+            const iconButton = document.createElement('button');
+            iconButton.type = 'button';
+            iconButton.className = 'icp icp-dd btn btn-default dropdown-toggle iconpicker-container';
+            iconButton.dataset.toggle = 'dropdown';
+            iconButton.dataset.sectionIconButton = id;
+            iconButton.setAttribute('aria-label', 'Choose section icon');
+            iconButton.title = 'Choose icon';
+            iconButton.innerHTML = '<span class="iconPlaceholder"><i hidden></i></span><span class="caret"></span>';
+            const dropdown = document.createElement('div');
+            dropdown.className = 'dropdown-menu';
+            picker.append(iconButton, dropdown);
+            const iconInput = document.createElement('input');
+            iconInput.type = 'hidden';
+            iconInput.id = 'sidebar-icon-' + id;
+            iconInput.name = 'sidebarSections[' + id + '][icon]';
+            iconInput.dataset.sectionIconInput = id;
+
+            const grip = document.createElement('button');
+            grip.type = 'button';
+            grip.className = 'lt-library-section-handle';
+            grip.setAttribute('aria-hidden', 'true');
+            grip.tabIndex = -1;
+            grip.textContent = '⠿';
+            const park = document.createElement('button');
+            park.type = 'button';
+            park.dataset.sectionPark = id;
+            park.title = 'Park section';
+            park.setAttribute('aria-label', 'Park section');
+            park.textContent = '×';
+            const placement = document.createElement('input');
+            placement.type = 'hidden';
+            placement.dataset.placementInput = '';
+            placement.name = 'fieldLayout[sidebar][]';
+            placement.value = id;
+
+            heading.append(caret, title, picker, iconInput, grip, park, placement);
+            const children = document.createElement('ol');
+            children.className = 'lt-library-zone';
+            children.dataset.libraryZone = 'sidebar';
+            children.dataset.sectionChildren = id;
+            section.append(heading, children);
+            workspace.querySelector('.lt-library-sidebar-units').appendChild(section);
+            initializeIconPicker(iconButton);
+            title.focus();
+        }
+
         workspace.addEventListener('dragstart', function (event) {
             const item = event.target.closest('[data-widget-kind]');
             if (!item || !workspace.contains(item)) return;
             dragged = item;
+            draggedChanged = false;
             item.classList.add('is-dragging');
             event.dataTransfer.effectAllowed = 'move';
             event.dataTransfer.setData('text/plain', item.dataset.widgetId);
@@ -72,6 +291,8 @@
         workspace.addEventListener('dragend', function () {
             if (dragged) dragged.classList.remove('is-dragging');
             dragged = null;
+            if (draggedChanged) scheduleSave();
+            draggedChanged = false;
         });
         workspace.addEventListener('dragover', function (event) {
             const zone = event.target.closest('[data-library-zone]');
@@ -85,6 +306,11 @@
                     ? ['tabs', 'parked'].includes(zone.dataset.libraryZone)
                     : ['sidebar', 'parked'].includes(zone.dataset.libraryZone);
             if (!allowed) return;
+            if (kind === 'tabs' && zone.dataset.libraryZone === 'parked'
+                && workspace.querySelectorAll('[data-library-zone="tabs"] > [data-widget-kind="tabs"]').length <= 1) {
+                setStatus('Keep at least one To-do tab visible.', 'error');
+                return;
+            }
             event.preventDefault();
             if (kind === 'sectionHeader') {
                 const zoneName = zone.dataset.libraryZone;
@@ -99,6 +325,7 @@
                     }
                 }
                 if (kind === 'sectionHeader') setSectionZone(dragged, zoneName);
+                draggedChanged = true;
                 return;
             }
             const destination = zone;
@@ -107,20 +334,24 @@
             if (!target || target.dataset.widgetKind !== kind || target.parentElement !== destination) {
                 destination.appendChild(dragged);
                 place(dragged, destination);
+                draggedChanged = true;
                 return;
             }
             const after = event.clientY > target.getBoundingClientRect().top + target.getBoundingClientRect().height / 2;
             destination.insertBefore(dragged, after ? target.nextSibling : target);
             place(dragged, destination);
+            draggedChanged = true;
         });
         workspace.addEventListener('drop', function (event) { if (event.target.closest('[data-library-zone]')) event.preventDefault(); });
         workspace.addEventListener('click', function (event) {
-            const addSection = event.target.closest('[data-sidebar-section-add]');
-            if (addSection) return; // The section-manager listener handles this control.
-            const deleteSection = event.target.closest('[data-sidebar-section-delete]');
+            const resetButton = event.target.closest('[data-layout-reset-preview]');
+            if (resetButton) { resetLayout(resetButton); return; }
+            const addSectionButton = event.target.closest('[data-sidebar-section-add]');
+            if (addSectionButton) { addSection(); return; }
+            const deleteSection = event.target.closest('[data-section-delete]');
             if (deleteSection) {
-                const id = deleteSection.dataset.sidebarSectionDelete;
-                const section = workspace.querySelector('[data-section-preview="' + CSS.escape(id) + '"]');
+                const id = deleteSection.dataset.sectionDelete;
+                const section = deleteSection.closest('[data-section-preview]');
                 const raw = workspace.querySelector('.lt-library-sidebar-units');
                 const children = section && section.querySelector('[data-section-children]');
                 if (section && children && raw) {
@@ -131,7 +362,7 @@
                     workspace.querySelectorAll('[data-parent-section="' + CSS.escape(id) + '"]').forEach(function (item) { setGroup(item, null); });
                     section.remove();
                 }
-                deleteSection.closest('[data-sidebar-section-row]').remove();
+                scheduleSave();
                 return;
             }
             const sectionButton = event.target.closest('[data-section-park]');
@@ -145,6 +376,20 @@
                 if (!target) return;
                 target.appendChild(section);
                 setSectionZone(section, parked ? 'parked' : 'sidebar');
+                if (parked && isGlobal && !section.querySelector('[data-section-delete]')) {
+                    const trash = document.createElement('button');
+                    trash.type = 'button';
+                    trash.className = 'lt-library-section-trash';
+                    trash.dataset.sectionDelete = section.dataset.sectionPreview;
+                    trash.title = 'Delete this section';
+                    trash.setAttribute('aria-label', 'Delete ' + (section.querySelector('[data-section-label-input]')?.value || 'section'));
+                    trash.innerHTML = '<i class="fa-solid fa-trash" aria-hidden="true"></i>';
+                    section.querySelector('h3').appendChild(trash);
+                } else if (!parked) {
+                    const trash = section.querySelector('[data-section-delete]');
+                    if (trash) trash.remove();
+                }
+                scheduleSave();
                 return;
             }
             const button = event.target.closest('[data-widget-park], [data-widget-add]');
@@ -153,86 +398,65 @@
             if (!item) return;
             const defaultZone = item.dataset.defaultZone || (item.dataset.widgetKind === 'tabs' ? 'tabs' : 'sidebar');
             const name = button.hasAttribute('data-widget-add') ? defaultZone : 'parked';
+            if (item.dataset.widgetKind === 'tabs' && name === 'parked'
+                && workspace.querySelectorAll('[data-library-zone="tabs"] > [data-widget-kind="tabs"]').length <= 1) {
+                setStatus('Keep at least one To-do tab visible.', 'error');
+                return;
+            }
             const zone = name === 'sidebar' && item.dataset.parentSection
                 ? groupZone(item.dataset.parentSection)
                 : workspace.querySelector('[data-library-zone="' + name + '"]');
-            if (zone) { zone.appendChild(item); place(item, zone); }
+            if (zone) { zone.appendChild(item); place(item, zone); scheduleSave(); }
         });
 
-        workspace.parentElement.addEventListener('input', function (event) {
+        workspace.addEventListener('input', function (event) {
             const labelInput = event.target.closest('[data-section-label-input]');
             const iconInput = event.target.closest('[data-section-icon-input]');
             const input = labelInput || iconInput;
             if (!input) return;
             const section = workspace.querySelector('[data-section-preview="' + CSS.escape(input.dataset[labelInput ? 'sectionLabelInput' : 'sectionIconInput']) + '"]');
             if (!section) return;
-            if (labelInput) section.querySelector('[data-section-title]').textContent = labelInput.value || 'Untitled section';
+            if (labelInput) {
+                section.querySelector('[data-section-title]')?.replaceChildren(document.createTextNode(labelInput.value));
+                const name = labelInput.value.trim() || 'section';
+                const park = section.querySelector('[data-section-park]');
+                const trash = section.querySelector('[data-section-delete]');
+                if (park) {
+                    park.title = (section.dataset.sectionZone === 'parked' ? 'Restore ' : 'Park ') + name + ' section';
+                    park.setAttribute('aria-label', park.title);
+                }
+                if (trash) trash.setAttribute('aria-label', 'Delete ' + name + ' section');
+            }
             if (iconInput) {
                 const icon = section.querySelector('[data-section-icon]');
-                icon.className = input.value;
-                icon.hidden = !input.value.trim();
+                if (icon) { icon.className = input.value; icon.hidden = !input.value.trim(); }
             }
+            scheduleSave();
         });
 
-        const sectionManager = workspace.querySelector('[data-sidebar-section-settings]');
-        if (sectionManager) sectionManager.addEventListener('click', function (event) {
-            const button = event.target.closest('[data-sidebar-section-add]');
-            if (!button) return;
-            event.preventDefault();
-            const id = 'sidebar-' + (window.crypto && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Math.random().toString(36).slice(2, 14));
-            const row = document.createElement('div');
-            row.className = 'lt-library-sidebar-manager__row';
-            row.dataset.sidebarSectionRow = id;
-            row.innerHTML = '<label>Heading<input type="text" maxlength="80" required data-section-label-input="' + id + '"></label><label>Icon classes<input type="text" maxlength="120" placeholder="fa-solid fa-folder" data-section-icon-input="' + id + '"></label><button type="button" class="btn btn-default" data-sidebar-section-delete="' + id + '">Remove section</button>';
-            row.querySelector('[data-section-label-input]').name = 'sidebarSections[' + id + '][label]';
-            row.querySelector('[data-section-label-input]').value = 'New section';
-            row.querySelector('[data-section-icon-input]').name = 'sidebarSections[' + id + '][icon]';
-            sectionManager.appendChild(row);
-
-            const section = document.createElement('section');
-            section.className = 'lt-library-preview-section';
-            section.dataset.widgetKind = 'sectionHeader';
-            section.dataset.widgetId = id;
-            section.dataset.sectionPreview = id;
-            section.dataset.sectionZone = 'sidebar';
-            section.draggable = true;
-            const title = document.createElement('h3');
-            const caret = document.createElement('i');
-            caret.className = 'fa fa-angle-down';
-            caret.setAttribute('aria-hidden', 'true');
-            const icon = document.createElement('i');
-            icon.dataset.sectionIcon = '';
-            icon.setAttribute('aria-hidden', 'true');
-            icon.hidden = true;
-            const label = document.createElement('span');
-            label.dataset.sectionTitle = '';
-            label.textContent = 'New section';
-            title.append(caret, icon, label);
-            const grip = document.createElement('button');
-            grip.type = 'button';
-            grip.className = 'lt-library-section-handle';
-            grip.setAttribute('aria-hidden', 'true');
-            grip.tabIndex = -1;
-            grip.textContent = '⠿';
-            const park = document.createElement('button');
-            park.type = 'button';
-            park.dataset.sectionPark = id;
-            park.title = 'Park New section';
-            park.textContent = '×';
-            title.append(grip, park);
-            const placement = document.createElement('input');
-            placement.type = 'hidden';
-            placement.dataset.placementInput = '';
-            placement.name = 'fieldLayout[sidebar][]';
-            placement.value = id;
-            title.appendChild(placement);
-            const children = document.createElement('ol');
-            children.className = 'lt-library-zone';
-            children.dataset.libraryZone = 'sidebar';
-            children.dataset.sectionChildren = id;
-            section.append(title, children);
-            workspace.querySelector('.lt-library-sidebar-units').appendChild(section);
+        workspace.addEventListener('focusout', function (event) {
+            const input = event.target.closest('[data-section-label-input]');
+            if (!input) return;
+            const section = input.closest('[data-section-preview]');
+            if (section && section.hasAttribute('data-section-new') && !input.value.trim()) {
+                discardNewSection(section);
+                return;
+            }
+            if (!input.value.trim()) input.value = input.dataset.originalLabel || 'Section';
+            if (section && section.hasAttribute('data-section-new')) delete section.dataset.sectionNew;
+            scheduleSave();
         });
+
+        if (form && isGlobal && form.dataset.autosaveInstalled !== '1') {
+            form.dataset.autosaveInstalled = '1';
+            form.addEventListener('change', function (event) {
+                if (!event.target.closest('[data-layout-reset-preview]')) scheduleSave();
+            });
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+                scheduleSave(true);
+            });
+        }
 
         function setSectionZone(section, zoneName) {
             const parked = zoneName === 'parked';
@@ -247,13 +471,20 @@
             }
             const headerInput = section.querySelector('h3 [data-placement-input]');
             if (headerInput) headerInput.name = 'fieldLayout[' + zoneName + '][]';
+            if (isGlobal && parked && !section.querySelector('[data-section-delete]')) {
+                const trash = document.createElement('button');
+                trash.type = 'button';
+                trash.className = 'lt-library-section-trash';
+                trash.dataset.sectionDelete = sectionId;
+                trash.title = 'Delete this section';
+                trash.setAttribute('aria-label', 'Delete section');
+                trash.innerHTML = '<i class="fa-solid fa-trash" aria-hidden="true"></i>';
+                section.querySelector('h3').appendChild(trash);
+            } else if (!parked) {
+                const trash = section.querySelector('[data-section-delete]');
+                if (trash) trash.remove();
+            }
         }
-        if (form) form.addEventListener('submit', function () {
-            workspace.querySelectorAll('[data-widget-kind]').forEach(function (item) {
-                const zone = item.closest('[data-library-zone]');
-                if (zone) place(item, zone);
-            });
-        });
     }
 
     function installLayoutEditor(editor) {

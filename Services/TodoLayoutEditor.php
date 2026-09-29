@@ -37,11 +37,20 @@ class TodoLayoutEditor
             $html .= '<div data-project-layout-panel'.($hasProjectOverride ? '' : ' hidden').'>';
         }
 
-        $html .= '<section class="lt-library-workspace"'.$attributes.'><header><h2>To-do modal layout</h2><p>Arrange the modal’s tabs, detail fields, sidebar sections, and below-save widgets. Drag unwanted items into the parked rail on the right.</p></header>';
-        if ($global) $html .= $this->renderSidebarSectionManager($sectionDefinitions);
-        if (! $global) $html .= '<p data-project-layout-status role="status">Projects use Library defaults until this layout is saved.</p>';
+        $html .= '<section class="lt-library-workspace"'.$attributes.'>';
+        if ($global) $html .= '<input type="hidden" name="sidebarSectionsPresent" value="1">';
+        if (! $global) {
+            $html .= '<header class="lt-library-project-layout__heading"><h3>To-do modal layout</h3><p>Arrange tabs, detail fields, sidebar sections, and below-save widgets for this project.</p></header>';
+            $html .= '<p data-project-layout-status role="status">Projects use Library defaults until this layout is saved.</p>';
+        }
         $html .= '<div class="lt-library-layout-stage"><div class="lt-library-ticket">';
-        $html .= '<div class="lt-library-ticket__chrome"><span>☑ #25</span><strong>Shop Tokens - Beta</strong><small>Created by Example User | Last Updated: 09/24/2026</small><button type="button" aria-label="Close preview" disabled>×</button></div>';
+        $html .= '<div class="lt-library-ticket__chrome"><span aria-hidden="true">☐</span><strong>To-do title</strong><small>Created by a team member</small>';
+        if ($global) {
+            $html .= '<button type="button" class="lt-library-ticket__reset-button" data-layout-reset-preview data-tooltip="Reset the To-do layout to defaults" aria-label="Reset the To-do layout to defaults">×</button>';
+        } else {
+            $html .= '<button type="button" class="lt-library-ticket__reset-button" data-project-layout-reset'.(!$canEdit || !$hasProjectOverride ? ' disabled' : '').' data-tooltip="Use Library defaults for this project" aria-label="Use Library defaults for this project">×</button>';
+        }
+        $html .= '</div>';
         $html .= '<div class="lt-library-ticket__tabstrip"><ol class="lt-library-zone" data-library-zone="tabs">';
         foreach ($allTabs as $tab) {
             if ($tab['enabled']) $html .= $this->widget('tabs', $tab['id'], $tab['label'], $tab['icon'], 'tabs', $tab['builtin'] ? 'Leantime tab' : 'Plugin tab', $global, $canEdit);
@@ -65,7 +74,9 @@ class TodoLayoutEditor
             if (isset($groupedIds[$id])) continue;
             $html .= $this->fieldWidget($id, 'sidebar', $global, $canEdit);
         }
-        $html .= '</div></aside></div></div><aside class="lt-library-ticket__parked"><header><strong>Parked Widgets</strong><small>Hidden from the To-do modal</small></header><ol class="lt-library-zone" data-library-zone="parked">';
+        $html .= '</div>';
+        if ($global) $html .= '<button type="button" class="lt-library-add-section" data-sidebar-section-add><span aria-hidden="true">+</span> Add sidebar section</button>';
+        $html .= '</aside></div></div><aside class="lt-library-ticket__parked"><header><strong>Parked Widgets</strong><small>Hidden from the To-do modal</small></header><ol class="lt-library-zone" data-library-zone="parked">';
         foreach ($layout['hidden'] as $id) {
             if (isset($sectionMap[$id])) {
                 $children = array_values(array_intersect($layout['sidebar'], $layout['groups'][$id] ?? []));
@@ -78,8 +89,8 @@ class TodoLayoutEditor
             if (! $tab['enabled']) $html .= $this->widget('tabs', $tab['id'], $tab['label'], $tab['icon'], 'parked', $tab['builtin'] ? 'Leantime tab' : 'Plugin tab', $global, $canEdit);
         }
         $html .= '</ol></aside></div>';
-        if ($global) $html .= '<p class="lt-library-workspace__hint">Widgets use their saved visibility and order in every To-do modal. Projects can override this layout in Project Settings → Integrations. Save controls stay fixed so a To-do can always be saved.</p>';
-        if (! $global && $canEdit) $html .= '<div class="lt-library-layout-editor__actions"><button type="button" class="btn btn-primary" data-project-layout-save>Save project layout</button> <button type="button" class="btn btn-default" data-project-layout-reset>Use Library defaults</button></div>';
+        if ($global) $html .= '<p class="lt-library-workspace__hint">Changes save automatically. Projects use this layout unless they have a project override. Save controls stay fixed so a To-do can always be saved.</p>';
+        if (! $global && $canEdit) $html .= '<div class="lt-library-layout-editor__actions"><button type="button" class="btn btn-primary" data-project-layout-save>Save project layout</button></div>';
         $html .= '</section>';
         if (! $global) $html .= '</div></section>';
         return $html;
@@ -97,8 +108,16 @@ class TodoLayoutEditor
         $parked = $zone === 'parked';
         $icon = trim((string) ($definition['icon'] ?? ''));
         $html = '<section class="lt-library-preview-section" data-widget-kind="sectionHeader" data-widget-id="'.$this->e($id).'" data-section-preview="'.$this->e($id).'" data-section-zone="'.$zone.'" draggable="'.($canEdit ? 'true' : 'false').'"'.($parked ? ' data-parked-section="1"' : '').'><h3><i class="fa fa-angle-down" aria-hidden="true"></i> ';
-        $html .= '<i data-section-icon class="'.$this->e($icon).'" aria-hidden="true"'.($icon === '' ? ' hidden' : '').'></i><span data-section-title>'.$this->e($label).'</span>';
-        if ($canEdit) $html .= '<button type="button" class="lt-library-section-handle" aria-hidden="true" tabindex="-1">⠿</button><button type="button" data-section-park="'.$id.'" title="'.($parked ? 'Restore ' : 'Park ').$label.' section">'.($parked ? '+' : '×').'</button>';
+        if ($global) {
+            $html .= '<input class="lt-library-section-title" type="text" maxlength="80" required name="sidebarSections['.$this->e($id).'][label]" value="'.$this->e($label).'" data-section-label-input="'.$this->e($id).'" data-original-label="'.$this->e($label).'" aria-label="Section name">';
+            $html .= $this->iconPicker($id, $icon);
+        } else {
+            $html .= '<i data-section-icon class="'.$this->e($icon).'" aria-hidden="true"'.($icon === '' ? ' hidden' : '').'></i><span data-section-title>'.$this->e($label).'</span>';
+        }
+        if ($canEdit) {
+            $html .= '<button type="button" class="lt-library-section-handle" aria-hidden="true" tabindex="-1">⠿</button><button type="button" data-section-park="'.$this->e($id).'" title="'.($parked ? 'Restore ' : 'Park ').$this->e($label).' section">'.($parked ? '+' : '×').'</button>';
+            if ($global && $parked) $html .= '<button type="button" class="lt-library-section-trash" data-section-delete="'.$this->e($id).'" title="Delete this section" aria-label="Delete '.$this->e($label).' section"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>';
+        }
         if ($global) $html .= '<input type="hidden" data-placement-input name="fieldLayout['.$zone.'][]" value="'.$this->e($id).'">';
         $html .= '</h3><ol class="lt-library-zone" data-library-zone="sidebar" data-section-children="'.$this->e($id).'">';
         foreach ($childIds as $childId) $html .= $this->fieldWidget($childId, 'sidebar', $global, $canEdit, $id);
@@ -149,17 +168,15 @@ class TodoLayoutEditor
         return $html.'</li>';
     }
 
-    private function renderSidebarSectionManager(array $definitions): string
+    private function iconPicker(string $id, string $icon): string
     {
-        $html = '<section class="lt-library-sidebar-manager"><h3>Sidebar dropdown sections</h3><p>Edit a section’s heading and icon, or remove the heading to move its fields into the open sidebar. Drag fields into any section or leave them in the open sidebar.</p>';
-        $html .= '<input type="hidden" name="sidebarSectionsPresent" value="1"><div data-sidebar-section-settings>';
-        foreach ($definitions as $definition) {
-            $id = $this->e($definition['id']);
-            $html .= '<div class="lt-library-sidebar-manager__row" data-sidebar-section-row="'.$id.'"><label>Heading<input type="text" maxlength="80" name="sidebarSections['.$id.'][label]" value="'.$this->e($definition['label']).'" data-section-label-input="'.$id.'" required></label>';
-            $html .= '<label>Icon classes<input type="text" maxlength="120" name="sidebarSections['.$id.'][icon]" value="'.$this->e($definition['icon'] ?? '').'" placeholder="fa-solid fa-folder" data-section-icon-input="'.$id.'"></label>';
-            $html .= '<button type="button" class="btn btn-default" data-sidebar-section-delete="'.$id.'">Remove section</button></div>';
-        }
-        return $html.'<button type="button" class="btn btn-default" data-sidebar-section-add>Add sidebar dropdown</button></div></section>';
+        $safeId = $this->e($id);
+        $inputId = 'sidebar-icon-'.$safeId;
+        $html = '<div class="btn-group inlineDropDownContainerLeft lt-library-icon-picker">';
+        $html .= '<button type="button" class="icp icp-dd btn btn-default dropdown-toggle iconpicker-container" data-toggle="dropdown" data-section-icon-button="'.$safeId.'" aria-label="Choose section icon" title="Choose icon">';
+        $html .= '<span class="iconPlaceholder"><i class="'.$this->e($icon).'"'.($icon === '' ? ' hidden' : '').'></i></span><span class="caret"></span></button><div class="dropdown-menu"></div></div>';
+        $html .= '<input type="hidden" id="'.$inputId.'" name="sidebarSections['.$safeId.'][icon]" value="'.$this->e($icon).'" data-section-icon-input="'.$safeId.'">';
+        return $html;
     }
 
     private function e(string $value): string

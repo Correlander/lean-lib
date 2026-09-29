@@ -3,8 +3,10 @@
 @section('content')
     <div class="maincontent">
         <div class="maincontentinner">
-            <h1>Leantime Library</h1>
-            <p>Arrange the native To-do tabs and sidebar sections together with contributions from enabled plugins. Enable or hide plugin contributions here; provider plugins supply their content while the Library owns placement and ordering.</p>
+            <header class="lt-library-page-heading">
+                <h1>Correlander’s Leantime Library</h1>
+                <p>One place to manage how enabled Leantime plugins and native interface components fit together.</p>
+            </header>
 
             @if (!empty($error))
                 <div class="alert alert-danger" role="alert">{{ $error }}</div>
@@ -20,24 +22,36 @@
                 </div>
             @endif
 
-            <form method="post" action="{{ BASE_URL }}/LeantimeLib/settings">
+            <form method="post" action="{{ BASE_URL }}/LeantimeLib/settings" data-library-settings-form>
                 @csrf
-                <h2>Leantime interface</h2>
-                <p>Optional changes to Leantime’s Apps navigation.</p>
-                <label class="lt-library-sortable__toggle">
-                    <input type="checkbox" name="hideExploreApps" value="1" @if ($hideExploreApps) checked @endif>
-                    Hide Explore Apps and make My Apps the only Apps tab and destination
-                </label>
-                <label class="lt-library-sortable__toggle">
-                    <input type="checkbox" name="fastOnboarding" value="1" @if ($fastOnboarding) checked @endif>
-                    Fast Onboarding: skip appearance and schedule steps, and do not create a starter “My Project”
-                </label>
-                <p>Fast Onboarding keeps account setup, uses appearance and schedule defaults, and sends users without a project to their dashboard. Users can change their work hours later under Profile settings.</p>
+                <section class="lt-library-preferences">
+                    <header>
+                        <h2>General improvements</h2>
+                        <p>Optional changes to Leantime’s navigation and onboarding.</p>
+                    </header>
+                    <label class="lt-library-preference">
+                        <input type="checkbox" name="hideExploreApps" value="1" @if ($hideExploreApps) checked @endif>
+                        <span><strong>Make My Apps the only Apps page</strong><small>Hide Explore Apps and send the Apps menu directly to My Apps.</small></span>
+                    </label>
+                    <label class="lt-library-preference">
+                        <input type="checkbox" name="fastOnboarding" value="1" @if ($fastOnboarding) checked @endif>
+                        <span><strong>Fast Onboarding</strong><small>Skip appearance and schedule steps, avoid creating a starter “My Project,” and let users adjust their schedule later in Profile settings.</small></span>
+                    </label>
+                </section>
 
-                {!! $todoLayoutEditor !!}
-
-                <button class="btn btn-primary" type="submit">Save Library settings</button>
-                <button class="btn btn-default" type="submit" name="resetLayout" value="1" formnovalidate>Reset To-do layout to defaults</button>
+                <section class="lt-library-gui-customization">
+                    <header>
+                        <h2>GUI customization</h2>
+                        <p>Arrange native interface parts and plugin contributions through one shared layout. Plugins provide their widgets; the Library controls where they appear and which ones are visible.</p>
+                    </header>
+                    <label class="lt-library-editor-selector">Editing
+                        <select aria-label="Choose interface area to customize">
+                            <option>To-do modal</option>
+                        </select>
+                    </label>
+                    {!! $todoLayoutEditor !!}
+                </section>
+                <p class="lt-library-autosave-status" data-autosave-status role="status" aria-live="polite">Changes save automatically.</p>
             </form>
         </div>
     </div>
