@@ -60,7 +60,10 @@ class TodoTabRegistry
             } catch (Throwable $exception) {
                 Log::error('Leantime Library tab renderer failed.', [
                     'tab' => $tab['id'],
-                    'exception' => $exception,
+                    'exception_class' => $exception::class,
+                    'exception_code' => (int) $exception->getCode(),
+                    'exception_file' => basename($exception->getFile()),
+                    'exception_line' => $exception->getLine(),
                 ]);
                 echo '<p>Unable to load this plugin tab.</p>';
             }
@@ -78,8 +81,9 @@ class TodoTabRegistry
 
         $normalized = [];
         $seen = [];
-        foreach ($tabs as $tab) {
+        foreach ($tabs as $index => $tab) {
             if (! is_array($tab)) {
+                Log::error('Leantime Library skipped a malformed To-do tab contribution.', ['index' => $index]);
                 continue;
             }
 
@@ -92,6 +96,10 @@ class TodoTabRegistry
                 || isset($seen[$id]) || ! is_string($label) || trim($label) === ''
                 || ! is_string($icon) || ! preg_match('/^[a-zA-Z0-9 _-]*$/', $icon)
                 || ! is_callable($render)) {
+                Log::error('Leantime Library skipped an invalid To-do tab contribution.', [
+                    'tab_id' => is_string($id) ? substr($id, 0, 120) : null,
+                    'index' => $index,
+                ]);
                 continue;
             }
 

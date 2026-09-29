@@ -19,17 +19,29 @@ class ProjectIntegrationRegistry
             ['projectId' => $projectId],
             'leantime'
         );
-        if (! is_array($panels)) return '<p>No plugins have registered project integrations.</p>';
+        if (! is_array($panels)) {
+            Log::error('Leantime Library received an invalid project integration panel list.');
+            return '<p>No plugins have registered project integrations.</p>';
+        }
 
         $html = '';
         $seen = [];
-        foreach ($panels as $panel) {
-            if (! is_array($panel)) continue;
+        foreach ($panels as $index => $panel) {
+            if (! is_array($panel)) {
+                Log::error('Leantime Library skipped a malformed project integration contribution.', ['index' => $index]);
+                continue;
+            }
             $id = $panel['id'] ?? null;
             $label = $panel['label'] ?? null;
             $render = $panel['render'] ?? null;
             if (! is_string($id) || ! preg_match('/^[a-zA-Z][a-zA-Z0-9_-]{0,79}$/', $id)
-                || isset($seen[$id]) || ! is_string($label) || trim($label) === '' || ! is_callable($render)) continue;
+                || isset($seen[$id]) || ! is_string($label) || trim($label) === '' || ! is_callable($render)) {
+                Log::error('Leantime Library skipped an invalid project integration contribution.', [
+                    'panel_id' => is_string($id) ? substr($id, 0, 80) : null,
+                    'index' => $index,
+                ]);
+                continue;
+            }
             $seen[$id] = true;
             try {
                 $content = $render($projectId);
@@ -39,7 +51,14 @@ class ProjectIntegrationRegistry
                     $html .= '<h3>'.$title.'</h3>'.$content.'</section>';
                 }
             } catch (Throwable $exception) {
-                Log::error('Leantime Library integration panel failed.', ['panel' => $id, 'exception' => $exception]);
+                Log::error('Leantime Library integration panel failed.', [
+                    'panel' => $id,
+                    'project_id' => $projectId,
+                    'exception_class' => $exception::class,
+                    'exception_code' => (int) $exception->getCode(),
+                    'exception_file' => basename($exception->getFile()),
+                    'exception_line' => $exception->getLine(),
+                ]);
                 $html .= '<section class="leantimelib-integration-panel"><p>This integration panel could not be loaded.</p></section>';
             }
         }

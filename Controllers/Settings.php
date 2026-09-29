@@ -2,6 +2,7 @@
 
 namespace Leantime\Plugins\LeantimeLib\Controllers;
 
+use Illuminate\Support\Facades\Log;
 use Leantime\Core\Auth\Permissions\RequiresPermission;
 use Leantime\Core\Controller\Controller;
 use Leantime\Core\Controller\Frontcontroller;
@@ -50,7 +51,21 @@ class Settings extends Controller
         }
 
         $order = $validated['tabOrder'] ?? [];
-        if (! is_array($order) || ! $this->registry->saveOrder($order)) {
+        $failureLogged = false;
+        try {
+            $saved = is_array($order) && $this->registry->saveOrder($order);
+        } catch (\Throwable $exception) {
+            Log::error('Leantime Library could not save the To-do tab order.', [
+                'exception_class' => $exception::class,
+                'exception_code' => (int) $exception->getCode(),
+                'exception_file' => basename($exception->getFile()),
+                'exception_line' => $exception->getLine(),
+            ]);
+            $saved = false;
+            $failureLogged = true;
+        }
+        if (! $saved) {
+            if (! $failureLogged) Log::error('Leantime Library tab-order setting could not be persisted.');
             $this->tpl->assign('tabs', $this->registry->getTabs());
             $this->tpl->assign('error', 'The tab order could not be saved.');
 
