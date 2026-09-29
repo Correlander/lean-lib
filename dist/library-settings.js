@@ -7,6 +7,19 @@
         let dragged = null;
         const form = workspace.closest('form');
 
+        function resolveZone(item, zone) {
+            if (!item || !zone || zone.dataset.libraryZone !== 'sidebar' || item.dataset.widgetKind !== 'fields') return zone;
+            const groups = {
+                organization: ['type', 'project', 'milestone', 'sprint', 'related'],
+                schedule: ['workStart', 'workEnd', 'plannedHours']
+            };
+            for (const [group, ids] of Object.entries(groups)) {
+                if (!ids.includes(item.dataset.widgetId)) continue;
+                return workspace.querySelector('[data-section-children="' + group + '"]') || zone;
+            }
+            return zone;
+        }
+
         function place(item, zone) {
             item.dataset.widgetZone = zone.dataset.libraryZone;
             item.classList.toggle('is-parked', zone.dataset.libraryZone === 'parked');
@@ -47,7 +60,9 @@
             if (!dragged || !zone) return;
             const kind = dragged.dataset.widgetKind;
             const allowed = kind === 'fields'
-                ? ['main', 'sidebar', 'parked'].includes(zone.dataset.libraryZone)
+                ? (dragged.dataset.defaultZone === 'auxiliary'
+                    ? ['auxiliary', 'parked'].includes(zone.dataset.libraryZone)
+                    : ['main', 'sidebar', 'parked'].includes(zone.dataset.libraryZone))
                 : kind === 'tabs'
                     ? ['tabs', 'parked'].includes(zone.dataset.libraryZone)
                     : ['sidebar', 'parked'].includes(zone.dataset.libraryZone);
@@ -75,16 +90,17 @@
                 }
                 return;
             }
+            const destination = resolveZone(dragged, zone);
             const target = event.target.closest('[data-widget-kind]');
             if (target === dragged) return;
-            if (!target || target.dataset.widgetKind !== kind || target.parentElement !== zone) {
-                zone.appendChild(dragged);
-                place(dragged, zone);
+            if (!target || target.dataset.widgetKind !== kind || target.parentElement !== destination) {
+                destination.appendChild(dragged);
+                place(dragged, destination);
                 return;
             }
             const after = event.clientY > target.getBoundingClientRect().top + target.getBoundingClientRect().height / 2;
-            zone.insertBefore(dragged, after ? target.nextSibling : target);
-            place(dragged, zone);
+            destination.insertBefore(dragged, after ? target.nextSibling : target);
+            place(dragged, destination);
         });
         workspace.addEventListener('drop', function (event) { if (event.target.closest('[data-library-zone]')) event.preventDefault(); });
         workspace.addEventListener('click', function (event) {
@@ -107,7 +123,7 @@
             if (!item) return;
             const defaultZone = item.dataset.defaultZone || (item.dataset.widgetKind === 'tabs' ? 'tabs' : 'sidebar');
             const name = button.hasAttribute('data-widget-add') ? defaultZone : 'parked';
-            const zone = workspace.querySelector('[data-library-zone="' + name + '"]');
+            const zone = resolveZone(item, workspace.querySelector('[data-library-zone="' + name + '"]'));
             if (zone) { zone.appendChild(item); place(item, zone); }
         });
 

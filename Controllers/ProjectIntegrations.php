@@ -76,6 +76,8 @@ class ProjectIntegrations
                 'fields' => ['required', 'array'],
                 'fields.main' => ['present', 'array'],
                 'fields.main.*' => ['required', 'string', 'max:120'],
+                'fields.auxiliary' => ['present', 'array'],
+                'fields.auxiliary.*' => ['required', 'string', 'max:120'],
                 'fields.sidebar' => ['present', 'array'],
                 'fields.sidebar.*' => ['required', 'string', 'max:120'],
                 'fields.hidden' => ['present', 'array'],

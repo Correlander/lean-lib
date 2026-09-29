@@ -50,6 +50,8 @@ class Settings extends Controller
                 'fieldLayout' => ['nullable', 'array'],
                 'fieldLayout.main' => ['nullable', 'array'],
                 'fieldLayout.main.*' => ['required', 'string', 'max:120'],
+                'fieldLayout.auxiliary' => ['nullable', 'array'],
+                'fieldLayout.auxiliary.*' => ['required', 'string', 'max:120'],
                 'fieldLayout.sidebar' => ['nullable', 'array'],
                 'fieldLayout.sidebar.*' => ['required', 'string', 'max:120'],
                 'fieldLayout.parked' => ['nullable', 'array'],
@@ -97,6 +99,7 @@ class Settings extends Controller
             $tabsEnabledSaved = $this->registry->saveEnabled($validated['tabEnabled'] ?? []);
             $fieldLayoutSaved = $this->fieldRegistry->saveLayout([
                 'main' => $validated['fieldLayout']['main'] ?? [],
+                'auxiliary' => $validated['fieldLayout']['auxiliary'] ?? [],
                 'sidebar' => $validated['fieldLayout']['sidebar'] ?? [],
                 'hidden' => $validated['fieldLayout']['parked'] ?? [],
             ]);

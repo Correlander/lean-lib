@@ -105,7 +105,7 @@
                 .filter((item) => item.dataset.widgetKind !== 'tabs' && item.closest('[data-library-zone]')?.dataset.libraryZone === zone)
                 .map((item) => item.dataset.widgetId);
         };
-        return { main: ids('main'), sidebar: ids('sidebar'), hidden: ids('parked') };
+        return { main: ids('main'), auxiliary: ids('auxiliary'), sidebar: ids('sidebar'), hidden: ids('parked') };
     }
 
     async function saveProjectLayout(control, reset) {

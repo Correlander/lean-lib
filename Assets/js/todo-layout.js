@@ -130,7 +130,8 @@
             }
             if (!field) return;
             const requestedZone = (layout.main || []).includes(id) ? 'main'
-                : (layout.sidebar || []).includes(id) ? 'sidebar' : 'hidden';
+                : (layout.sidebar || []).includes(id) ? 'sidebar'
+                    : (layout.auxiliary || []).includes(id) ? 'auxiliary' : 'hidden';
             const sectionId = ['type', 'project', 'milestone', 'sprint', 'related'].includes(id) ? 'organization'
                 : (['workStart', 'workEnd', 'plannedHours'].includes(id) ? 'schedule' : null);
             const target = ['subtasks', 'discussion'].includes(id) && auxiliaryZone
@@ -216,7 +217,7 @@
         });
         const auxiliaryNodes = new Map(Array.from(auxiliaryZone ? auxiliaryZone.children : []).map((node) => [node.dataset.leantimelibField, node]));
         let auxiliaryAnchor = auxiliaryZone ? auxiliaryZone.firstChild : null;
-        (layout.main || []).filter((id) => ['subtasks', 'discussion'].includes(id)).map((id) => auxiliaryNodes.get(id)).filter(Boolean).forEach((node) => {
+        (layout.auxiliary || []).map((id) => auxiliaryNodes.get(id)).filter(Boolean).forEach((node) => {
             if (node !== auxiliaryAnchor) auxiliaryZone.insertBefore(node, auxiliaryAnchor);
             auxiliaryAnchor = node.nextSibling;
         });

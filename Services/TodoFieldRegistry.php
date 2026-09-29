@@ -24,8 +24,8 @@ class TodoFieldRegistry
         'dueDate' => ['label' => 'Due date', 'zone' => 'main', 'selector' => '[name="dateToFinish"]'],
         'tags' => ['label' => 'Tags', 'zone' => 'main', 'selector' => '#tags'],
         'description' => ['label' => 'Description', 'zone' => 'main', 'selector' => '#descriptionEditor'],
-        'subtasks' => ['label' => 'Subtasks', 'zone' => 'main', 'selector' => '@subtasks'],
-        'discussion' => ['label' => 'Discussion', 'zone' => 'main', 'selector' => '@discussion'],
+        'subtasks' => ['label' => 'Subtasks', 'zone' => 'auxiliary', 'selector' => '@subtasks'],
+        'discussion' => ['label' => 'Discussion', 'zone' => 'auxiliary', 'selector' => '@discussion'],
         'type' => ['label' => 'To-do type', 'zone' => 'sidebar', 'selector' => '#type'],
         'project' => ['label' => 'Project', 'zone' => 'sidebar', 'selector' => '[name="projectId"]'],
         'milestone' => ['label' => 'Milestone', 'zone' => 'sidebar', 'selector' => '[name="milestoneid"]'],
@@ -60,20 +60,33 @@ class TodoFieldRegistry
         $saved = is_string($value) ? json_decode($value, true) : null;
         $saved = is_array($saved) ? $saved : [];
         $available = $this->fields($projectId);
-        $layout = ['main' => [], 'sidebar' => [], 'hidden' => []];
-        foreach (['main', 'sidebar', 'hidden'] as $zone) {
+        $zones = ['main', 'sidebar', 'auxiliary', 'hidden'];
+        $layout = array_fill_keys($zones, []);
+        foreach ($zones as $zone) {
             $ids = is_array($saved[$zone] ?? null) ? $saved[$zone] : [];
             foreach ($ids as $id) {
-                if (is_string($id) && isset($available[$id]) && ! in_array($id, $layout['main'], true) && ! in_array($id, $layout['sidebar'], true) && ! in_array($id, $layout['hidden'], true)) {
-                    $layout[$zone][] = $id;
+                if (! is_string($id) || ! isset($available[$id])) continue;
+                // Older Library versions stored Subtasks and Discussion in main. Keep existing
+                // layouts, but route those fixed below-footer components to their real region.
+                $targetZone = $zone === 'main' && ($available[$id]['zone'] ?? null) === 'auxiliary'
+                    ? 'auxiliary'
+                    : $zone;
+                $alreadyPlaced = false;
+                foreach ($zones as $existingZone) {
+                    if (in_array($id, $layout[$existingZone], true)) {
+                        $alreadyPlaced = true;
+                        break;
+                    }
                 }
+                if (! $alreadyPlaced) $layout[$targetZone][] = $id;
             }
         }
         $defaultOrder = ['organization', 'type', 'project', 'milestone', 'sprint', 'related', 'schedule', 'workStart', 'workEnd', 'plannedHours'];
         foreach (array_keys($available) as $id) if (! in_array($id, $defaultOrder, true)) $defaultOrder[] = $id;
         foreach ($defaultOrder as $id) {
             $field = $available[$id];
-            if (! in_array($id, $layout['main'], true) && ! in_array($id, $layout['sidebar'], true) && ! in_array($id, $layout['hidden'], true)) {
+            if (! in_array($id, $layout['main'], true) && ! in_array($id, $layout['sidebar'], true)
+                && ! in_array($id, $layout['auxiliary'], true) && ! in_array($id, $layout['hidden'], true)) {
                 $defaultZone = in_array($field['kind'] ?? '', ['sections', 'sectionHeader'], true) && ! ($field['enabled'] ?? true) ? 'hidden' : $field['zone'];
                 $layout[$defaultZone][] = $id;
             }
@@ -100,16 +113,33 @@ class TodoFieldRegistry
     public function saveLayout(array $layout, ?int $projectId = null): bool
     {
         $available = $this->fields($projectId);
-        $normalized = ['main' => [], 'sidebar' => [], 'hidden' => []];
-        foreach (['main', 'sidebar', 'hidden'] as $zone) {
+        $zones = ['main', 'sidebar', 'auxiliary', 'hidden'];
+        $normalized = array_fill_keys($zones, []);
+        foreach ($zones as $zone) {
             foreach ($layout[$zone] ?? [] as $id) {
-                if (is_string($id) && isset($available[$id]) && ! in_array($id, $normalized['main'], true) && ! in_array($id, $normalized['sidebar'], true) && ! in_array($id, $normalized['hidden'], true)) {
-                    $normalized[$zone][] = $id;
+                if (! is_string($id) || ! isset($available[$id])) continue;
+                $targetZone = $zone === 'main' && ($available[$id]['zone'] ?? null) === 'auxiliary'
+                    ? 'auxiliary'
+                    : $zone;
+                $alreadyPlaced = false;
+                foreach ($zones as $existingZone) {
+                    if (in_array($id, $normalized[$existingZone], true)) {
+                        $alreadyPlaced = true;
+                        break;
+                    }
                 }
+                if (! $alreadyPlaced) $normalized[$targetZone][] = $id;
             }
         }
         foreach ($available as $id => $field) {
-            if (! in_array($id, $normalized['main'], true) && ! in_array($id, $normalized['sidebar'], true) && ! in_array($id, $normalized['hidden'], true)) {
+            $placed = false;
+            foreach ($zones as $zone) {
+                if (in_array($id, $normalized[$zone], true)) {
+                    $placed = true;
+                    break;
+                }
+            }
+            if (! $placed) {
                 $defaultZone = in_array($field['kind'] ?? '', ['sections', 'sectionHeader'], true) && ! ($field['enabled'] ?? true) ? 'hidden' : $field['zone'];
                 $normalized[$defaultZone][] = $id;
             }
