@@ -93,6 +93,17 @@
             organization: details.querySelector('#accordion_content-tickets-organization'),
             schedule: details.querySelector('#accordion_content-tickets-dates')
         };
+        const mainColumn = details.querySelector('.col-md-9');
+        let auxiliaryZone = mainColumn && mainColumn.querySelector(':scope > [data-leantimelib-field-zone="auxiliary"]');
+        if (!auxiliaryZone && mainColumn) {
+            auxiliaryZone = document.createElement('div');
+            auxiliaryZone.className = 'leantimelib-auxiliary-fields';
+            auxiliaryZone.dataset.leantimelibFieldZone = 'auxiliary';
+            const footer = mainColumn.querySelector('.sticky-modal-footer');
+            let anchor = footer ? footer.nextSibling : null;
+            while (anchor && ['BR', 'HR'].includes(anchor.tagName)) anchor = anchor.nextSibling;
+            mainColumn.insertBefore(auxiliaryZone, anchor);
+        }
 
         Object.entries(nativeFields).forEach(([id, fieldSelector]) => {
             let field = details.querySelector('[data-leantimelib-field="' + id + '"]');
@@ -110,9 +121,11 @@
                 : (layout.sidebar || []).includes(id) ? 'sidebar' : 'hidden';
             const sectionId = ['type', 'project', 'milestone', 'sprint', 'related'].includes(id) ? 'organization'
                 : (['workStart', 'workEnd', 'plannedHours'].includes(id) ? 'schedule' : null);
-            const target = requestedZone === 'sidebar' && sectionId && nativeSections[sectionId]
-                ? nativeSections[sectionId]
-                : (requestedZone === 'sidebar' ? sidebarZone : mainZone);
+            const target = ['subtasks', 'discussion'].includes(id) && auxiliaryZone
+                ? auxiliaryZone
+                : (requestedZone === 'sidebar' && sectionId && nativeSections[sectionId]
+                    ? nativeSections[sectionId]
+                    : (requestedZone === 'sidebar' ? sidebarZone : mainZone));
             if (field.parentElement !== target) target.appendChild(field);
             field.hidden = requestedZone === 'hidden';
             field.setAttribute('aria-hidden', requestedZone === 'hidden' ? 'true' : 'false');
@@ -121,7 +134,6 @@
         (layout.sidebar || []).forEach((id) => {
             if (Object.prototype.hasOwnProperty.call(nativeFields, id)) return;
             const section = details.querySelector('.leantimelib-todo-section[data-leantimelib-section="' + CSS.escape(id) + '"]');
-            if (section && section.parentElement !== sidebarZone) sidebarZone.appendChild(section);
             if (section) {
                 section.hidden = false;
                 section.setAttribute('aria-hidden', 'false');
@@ -147,37 +159,59 @@
             row.setAttribute('aria-hidden', visible ? 'false' : 'true');
         });
 
-        // Keep each zone in the saved order. Hidden controls remain in the form,
-        // so existing values still submit when a widget is parked.
-        ['main', 'sidebar'].forEach((zoneName) => {
-            const zone = zoneName === 'main' ? mainZone : sidebarZone;
-            const order = layout[zoneName] || [];
-            const zones = zoneName === 'sidebar' ? [sidebarZone, nativeSections.organization, nativeSections.schedule].filter(Boolean) : [zone];
-            const nodes = new Map(zones.flatMap((parent) => Array.from(parent.children)).map((node) => [node.dataset.leantimelibField || node.dataset.leantimelibSection, node]));
-            const ordered = order.map((id) => nodes.get(id)).filter(Boolean);
-            nodes.forEach((node) => { if (!ordered.includes(node)) ordered.push(node); });
-            const headerRank = { organization: order.indexOf('organization'), schedule: order.indexOf('schedule') };
-            const sectionRows = ['organization', 'schedule'].sort((a, b) => (headerRank[a] < 0 ? 999 : headerRank[a]) - (headerRank[b] < 0 ? 999 : headerRank[b]));
-            let sectionAnchor = sidebarZone.nextSibling;
-            sectionRows.forEach((id) => {
-                const header = details.querySelector('#accordion_link_tickets-' + (id === 'organization' ? 'organization' : 'dates'));
-                const row = header && header.closest('.row.marginBottom');
-                if (row && order.includes(id)) {
-                    sidebar.insertBefore(row, sectionAnchor);
-                    sectionAnchor = row.nextSibling;
-                }
+        // Order whole sidebar units by the same saved sequence shown in the Library editor.
+        // Core accordion rows and plugin sections are siblings in this sequence, so drag order
+        // changes their actual placement relative to one another.
+        const sidebarUnits = new Map();
+        ['organization', 'schedule'].forEach((id) => {
+            const header = details.querySelector('#accordion_link_tickets-' + (id === 'organization' ? 'organization' : 'dates'));
+            const row = header && header.closest('.row.marginBottom');
+            if (row) sidebarUnits.set(id, row);
+        });
+        Object.entries(nativeFields).forEach(([id]) => {
+            if (['type', 'project', 'milestone', 'sprint', 'related', 'workStart', 'workEnd', 'plannedHours'].includes(id)) return;
+            if (!(layout.sidebar || []).includes(id)) return;
+            const field = details.querySelector('[data-leantimelib-field="' + id + '"]');
+            if (field) sidebarUnits.set(id, field);
+        });
+        details.querySelectorAll('.leantimelib-todo-section[data-leantimelib-section]').forEach((section) => {
+            sidebarUnits.set(section.dataset.leantimelibSection, section);
+        });
+        let sidebarAnchor = sidebarZone.nextSibling;
+        (layout.sidebar || []).forEach((id) => {
+            const unit = sidebarUnits.get(id);
+            if (!unit) return;
+            unit.hidden = false;
+            unit.setAttribute('aria-hidden', 'false');
+            if (unit !== sidebarAnchor) sidebar.insertBefore(unit, sidebarAnchor);
+            sidebarAnchor = unit.nextSibling;
+        });
+        sidebarZone.hidden = true;
+        ['organization', 'schedule'].forEach((id) => {
+            const parent = nativeSections[id];
+            if (!parent) return;
+            const childNodes = (layout.sidebar || [])
+                .map((fieldId) => parent.querySelector('[data-leantimelib-field="' + fieldId + '"]'))
+                .filter(Boolean);
+            let childAnchor = parent.firstChild;
+            childNodes.forEach((node) => {
+                if (node !== childAnchor) parent.insertBefore(node, childAnchor);
+                childAnchor = node.nextSibling;
             });
-            const groupedIds = new Set(['organization', 'schedule', 'type', 'project', 'milestone', 'sprint', 'related', 'workStart', 'workEnd', 'plannedHours']);
-            ordered.filter((node) => !groupedIds.has(node.dataset.leantimelibField || node.dataset.leantimelibSection)).forEach((node, index) => { if (zone.children[index] !== node) zone.insertBefore(node, zone.children[index] || null); });
-            if (zoneName === 'sidebar') {
-                ['organization', 'schedule'].forEach((id) => {
-                    const parent = nativeSections[id];
-                    if (!parent) return;
-                    const sectionOrder = order.filter((fieldId) => parent.querySelector('[data-leantimelib-field="' + fieldId + '"]'));
-                    const childNodes = sectionOrder.map((fieldId) => parent.querySelector('[data-leantimelib-field="' + fieldId + '"]')).filter(Boolean);
-                    childNodes.forEach((node, index) => { if (parent.children[index] !== node) parent.insertBefore(node, parent.children[index] || null); });
-                });
-            }
+        });
+
+        // Keep main fields in saved order. Hidden fields stay in the form but are not shown.
+        const mainNodes = new Map(Array.from(mainZone.children).map((node) => [node.dataset.leantimelibField, node]));
+        let mainAnchor = mainZone.firstChild;
+        (layout.main || []).map((id) => mainNodes.get(id)).filter(Boolean).forEach((node) => {
+            if (node !== mainAnchor) mainZone.insertBefore(node, mainAnchor);
+            mainAnchor = node.nextSibling;
+        });
+        const auxiliaryNodes = new Map(Array.from(auxiliaryZone ? auxiliaryZone.children : []).map((node) => [node.dataset.leantimelibField, node]));
+        let auxiliaryAnchor = auxiliaryZone ? auxiliaryZone.firstChild : null;
+        (layout.main || []).filter((id) => ['subtasks', 'discussion'].includes(id)).map((id) => auxiliaryNodes.get(id)).filter(Boolean).forEach((node) => {
+            if (node !== auxiliaryAnchor) auxiliaryZone.insertBefore(node, auxiliaryAnchor);
+            auxiliaryAnchor = node.nextSibling;
         });
     }
 
@@ -185,6 +219,7 @@
         const iconSelector = kind === 'subtasks' ? '.fa-sitemap' : '.fa-comments';
         const heading = Array.from(details.querySelectorAll('h4')).find((item) => item.querySelector(iconSelector));
         if (!heading) return null;
+        const nextContent = heading.nextElementSibling;
         const wrapper = document.createElement('section');
         wrapper.className = 'leantimelib-auxiliary-widget';
         heading.parentNode.insertBefore(wrapper, heading);
@@ -195,8 +230,7 @@
             if (list) wrapper.appendChild(list);
             if (indicator && indicator.classList.contains('htmx-indicator')) wrapper.appendChild(indicator);
         } else {
-            const content = heading.nextElementSibling;
-            if (content) wrapper.appendChild(content);
+            if (nextContent) wrapper.appendChild(nextContent);
         }
         return wrapper;
     }

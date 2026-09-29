@@ -53,19 +53,26 @@
                     : ['sidebar', 'parked'].includes(zone.dataset.libraryZone);
             if (!allowed) return;
             event.preventDefault();
-            if (kind === 'sectionHeader') {
+            if (kind === 'sectionHeader' || kind === 'sections') {
                 const zoneName = zone.dataset.libraryZone;
-                const targetSection = event.target.closest('[data-section-preview]');
-                if (targetSection && targetSection !== dragged && targetSection.dataset.sectionZone === zoneName) {
-                    const after = event.clientY > targetSection.getBoundingClientRect().top + targetSection.getBoundingClientRect().height / 2;
-                    targetSection.parentElement.insertBefore(dragged, after ? targetSection.nextSibling : targetSection);
+                const targetUnit = event.target.closest('[data-section-preview], [data-widget-kind="sections"]');
+                if (targetUnit && targetUnit !== dragged) {
+                    const after = event.clientY > targetUnit.getBoundingClientRect().top + targetUnit.getBoundingClientRect().height / 2;
+                    targetUnit.parentElement.insertBefore(dragged, after ? targetUnit.nextSibling : targetUnit);
                 } else {
                     const target = zoneName === 'sidebar'
-                        ? workspace.querySelector('.lt-library-ticket__sidebar')
+                        ? workspace.querySelector('.lt-library-sidebar-units')
                         : workspace.querySelector('.lt-library-ticket__parked > [data-library-zone="parked"]');
-                    if (target) target.appendChild(dragged);
+                    if (target) {
+                        target.appendChild(dragged);
+                        if (kind === 'sections') place(dragged, target);
+                    }
                 }
-                setSectionZone(dragged, zoneName);
+                if (kind === 'sectionHeader') setSectionZone(dragged, zoneName);
+                else {
+                    const target = dragged.closest('[data-library-zone]');
+                    if (target) place(dragged, target);
+                }
                 return;
             }
             const target = event.target.closest('[data-widget-kind]');
@@ -88,7 +95,7 @@
                 const parked = section.dataset.sectionZone !== 'parked';
                 const target = parked
                     ? workspace.querySelector('.lt-library-ticket__parked > [data-library-zone="parked"]')
-                    : workspace.querySelector('.lt-library-ticket__sidebar');
+                    : workspace.querySelector('.lt-library-sidebar-units');
                 if (!target) return;
                 target.appendChild(section);
                 setSectionZone(section, parked ? 'parked' : 'sidebar');

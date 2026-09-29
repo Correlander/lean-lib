@@ -184,6 +184,13 @@ class TodoTabRegistry
         if ($projectId > 0) $this->settings->deleteSetting('projectsettings.'.$projectId.self::PROJECT_LAYOUT_SUFFIX);
     }
 
+    public function hasProjectLayout(int $projectId): bool
+    {
+        if ($projectId < 1) return false;
+        $value = $this->settings->getSetting('projectsettings.'.$projectId.self::PROJECT_LAYOUT_SUFFIX, null);
+        return is_string($value) && $value !== '' && is_array(json_decode($value, true));
+    }
+
     public function resetLayout(): void
     {
         $this->settings->deleteSetting(self::ORDER_SETTING);

@@ -69,13 +69,32 @@ class TodoFieldRegistry
                 }
             }
         }
-        foreach ($available as $id => $field) {
+        $defaultOrder = ['organization', 'type', 'project', 'milestone', 'sprint', 'related', 'schedule', 'workStart', 'workEnd', 'plannedHours'];
+        foreach (array_keys($available) as $id) if (! in_array($id, $defaultOrder, true)) $defaultOrder[] = $id;
+        foreach ($defaultOrder as $id) {
+            $field = $available[$id];
             if (! in_array($id, $layout['main'], true) && ! in_array($id, $layout['sidebar'], true) && ! in_array($id, $layout['hidden'], true)) {
                 $defaultZone = in_array($field['kind'] ?? '', ['sections', 'sectionHeader'], true) && ! ($field['enabled'] ?? true) ? 'hidden' : $field['zone'];
                 $layout[$defaultZone][] = $id;
             }
         }
+        foreach (['organization' => ['type', 'project', 'milestone', 'sprint', 'related'], 'schedule' => ['workStart', 'workEnd', 'plannedHours']] as $header => $children) {
+            $savedSidebar = is_array($saved['sidebar'] ?? null) ? $saved['sidebar'] : [];
+            if (in_array($header, $savedSidebar, true) || ! in_array($header, $layout['sidebar'], true)) continue;
+            $layout['sidebar'] = array_values(array_diff($layout['sidebar'], [$header]));
+            $positions = array_map(static fn (string $child): int|false => array_search($child, $layout['sidebar'], true), $children);
+            $positions = array_values(array_filter($positions, static fn (int|false $position): bool => $position !== false));
+            $insertAt = $positions === [] ? count($layout['sidebar']) : min($positions);
+            array_splice($layout['sidebar'], $insertAt, 0, [$header]);
+        }
         return $layout;
+    }
+
+    public function hasProjectOverride(int $projectId): bool
+    {
+        if ($projectId < 1) return false;
+        $value = $this->settings->getSetting('projectsettings.'.$projectId.self::PROJECT_SUFFIX, null);
+        return is_string($value) && $value !== '' && is_array(json_decode($value, true));
     }
 
     public function saveLayout(array $layout, ?int $projectId = null): bool

@@ -74,7 +74,7 @@ EventDispatcher::add_filter_listener('leantime.plugins.leantimelib.project.integ
 
 `render` must return trusted HTML for the given project ID. Keep credentials in the provider plugin, validate each request there, and escape user/provider values in its view. This is the first panel contract and is intentionally limited to project integrations.
 
-The project layout editor includes enabled plugin widgets and native fields. Saving writes the project's tab visibility, plugin widget visibility/order, and field positions under Leantime's `projectsettings.{projectId}.*` settings namespace; it does not hide or disable the provider's project settings panel.
+Project integrations show a compact **Override Library To-do layout for this project** checkbox. The large ticket editor appears only after enabling the override. Saving writes the project's tab visibility, plugin widget visibility/order, and field positions under Leantime's `projectsettings.{projectId}.*` settings namespace; unchecking or selecting **Use Library defaults** clears the project layout and restores inheritance.
 
 ## Leantime App menu
 

@@ -101,12 +101,9 @@
 
     function getFieldState(control) {
         const ids = function (zone) {
-            const result = [];
-            control.querySelectorAll('[data-library-zone="' + zone + '"]').forEach(function (list) {
-                list.querySelectorAll(':scope > [data-widget-kind="fields"], :scope > [data-widget-kind="sections"]').forEach((item) => result.push(item.dataset.widgetId));
-            });
-            control.querySelectorAll('[data-section-preview][data-section-zone="' + zone + '"]').forEach((section) => result.push(section.dataset.sectionPreview));
-            return result;
+            return Array.from(control.querySelectorAll('[data-widget-kind]'))
+                .filter((item) => item.dataset.widgetKind !== 'tabs' && item.closest('[data-library-zone]')?.dataset.libraryZone === zone)
+                .map((item) => item.dataset.widgetId);
         };
         return { main: ids('main'), sidebar: ids('sidebar'), hidden: ids('parked') };
     }
@@ -130,6 +127,12 @@
             else if (status) status.textContent = 'Project To-do layout saved.';
         } catch (error) {
             if (status) status.textContent = error.message;
+            if (reset) {
+                const toggle = control.querySelector('[data-project-layout-toggle]');
+                const editor = control.querySelector('[data-project-layout-panel]');
+                if (toggle) toggle.checked = true;
+                if (editor) editor.hidden = false;
+            }
             console.error('[LeantimeLib project layout]', error);
         } finally {
             buttons.forEach((button) => { button.disabled = false; });
@@ -137,6 +140,16 @@
     }
 
     document.addEventListener('change', function (event) {
+        const layoutToggle = event.target.closest('[data-project-layout-toggle]');
+        if (layoutToggle) {
+            const control = layoutToggle.closest('[data-project-layout]');
+            const editor = control && control.querySelector('[data-project-layout-panel]');
+            if (layoutToggle.checked) {
+                if (editor) editor.hidden = false;
+            } else if (control) {
+                saveProjectLayout(control, true);
+            }
+        }
         const checkbox = event.target.closest('[data-section-toggle]');
         if (!checkbox) return;
         const control = checkbox.closest('[data-leantimelib-visibility]');
