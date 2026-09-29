@@ -1,6 +1,8 @@
-# Leantime Library
+# lean-library
 
-Leantime Library gives administrators one place to arrange the To-do modal and manage compatible plugin additions. It supports Leantime 3.10.0.
+lean-library is a shared extension point and administration interface for coordinating compatible Leantime plugins and interface customizations. The design is intended to support multiple parts of Leantime; the To-do modal is the first interface currently available for visual customization.
+
+It also provides a shared registry for plugin panels in **Project Settings → Integrations**. Plugin authors contribute content through the Library, which gives administrators a central place to manage compatible additions.
 
 ## Install
 
@@ -8,83 +10,29 @@ Leantime Library gives administrators one place to arrange the To-do modal and m
 2. Enable it from **My Apps**.
 3. Open the Library settings from the plugin controls.
 
-When updating, copy the whole plugin folder, including `dist/` and `dist/mix-manifest.json`. Those files are required for the browser assets and their cache versions.
+When updating, copy the whole plugin folder, including `dist/` and `dist/mix-manifest.json`. Those files are required for browser assets and cache versions.
 
-## To-do layout
+## GUI customizations and insertions
 
-The Library settings editor previews the To-do modal. Drag tabs, fields, sidebar groups, plugin additions, and below-form sections into position, or park items to hide them. The Save controls stay in place. Changes save automatically; **Reset to defaults** restores the original layout.
+The **GUI customization** editor is designed as a shared home for visual previews and layout controls as more interfaces are supported. Today, its preview represents the To-do modal: administrators can arrange tabs, fields, sidebar groups, and plugin additions, or park items to hide them. Save controls remain fixed, and changes save automatically. **Reset to defaults** restores the standard layout.
 
-Projects use the instance layout by default. In **Project Settings → Integrations**, enable **Override Library To-do layout for this project** to customize one project. Turn the override off or choose **Use Library defaults** to restore inheritance.
+Projects inherit the instance layout. In **Project Settings → Integrations**, enable **Override Library To-do layout for this project** to customize one project's To-do modal. Disable the override or choose **Use Library defaults** to restore inheritance. Sidebar headers and icons are instance-wide; project overrides can move and group available sidebar items.
 
-Sidebar headers and their icons are configured instance-wide. Project overrides can move and group available sidebar items, but cannot rename headers or add new ones.
+<!-- Add a screenshot of this editor when a representative image is available. -->
 
-## Add To-do content from a plugin
+## Plugin developers
 
-Plugins can contribute a complete To-do tab or an inline sidebar section. The Library collects and orders contributions, then applies the saved layout. Providers supply the content and remain responsible for their own data and permissions.
+Plugins use Leantime's event filters to register additions with the Library. Each contribution needs a stable unique ID, a display label, and a renderer for its content. The Library collects contributions and manages their layout; the provider remains responsible for its content, data access, and write permissions.
 
-Use stable, unique IDs containing letters, digits, dashes, or underscores. Avoid the reserved native tab IDs `ticketdetails`, `files`, and `timesheet`. Return trusted HTML from the `render` callback, preferably using the provider's view renderer.
+| Contribution | Filter | Current use |
+| --- | --- | --- |
+| To-do tab | `leantime.plugins.leantimelib.todo.detail.tabs` | A tab with a plugin-rendered panel in the To-do modal. |
+| To-do sidebar section | `leantime.plugins.leantimelib.todo.detail.sections` | An inline plugin panel in the To-do sidebar. |
+| Project integration panel | `leantime.plugins.leantimelib.project.integrations.panels` | A plugin settings panel under Project Settings → Integrations. |
 
-### Tab
+The To-do tab and sidebar section contributions can be arranged in the shared To-do layout editor. Project integration panels currently render in the order their providers register them; a Library ordering control is not implemented yet.
 
-Register on `leantime.plugins.leantimelib.todo.detail.tabs`:
-
-```php
-use Leantime\Core\Events\EventDispatcher;
-
-EventDispatcher::add_filter_listener('leantime.plugins.leantimelib.todo.detail.tabs', function (array $tabs, array $params): array {
-    $tabs[] = [
-        'id' => 'vendor-schedule',
-        'label' => 'Schedule',
-        'icon' => 'fa-solid fa-calendar', // Optional icon classes.
-        'order' => 100, // Initial order; admins can change it.
-        'render' => static function ($ticket, array $params): string {
-            return app(ScheduleTab::class)->render($ticket);
-        },
-    ];
-
-    return $tabs;
-});
-```
-
-### Inline sidebar section
-
-Register on `leantime.plugins.leantimelib.todo.detail.sections`:
-
-```php
-EventDispatcher::add_filter_listener('leantime.plugins.leantimelib.todo.detail.sections', function (array $sections, array $params): array {
-    $sections[] = [
-        'id' => 'github',
-        'label' => 'GitHub',
-        'icon' => 'fa-brands fa-github',
-        'order' => 100,
-        'render' => static fn ($ticket, array $params): string => app(GitHubTodoSection::class)->render($ticket),
-    ];
-
-    return $sections;
-});
-```
-
-Contributions should be registered even when there is no active ticket; the settings editor also reads them. A tab's `render` callback receives the ticket and parameters, and an inline section is rendered in the To-do sidebar. The Library handles placement and visibility after collecting the contributions.
-
-Plugins cannot currently add arbitrary native form fields or items below Save. Native fields are managed by the Library.
-
-## Project integration panels
-
-Plugins can add a panel to **Project Settings → Integrations** with the `leantime.plugins.leantimelib.project.integrations.panels` filter:
-
-```php
-EventDispatcher::add_filter_listener('leantime.plugins.leantimelib.project.integrations.panels', function (array $panels, array $params): array {
-    $panels[] = [
-        'id' => 'github',
-        'label' => 'GitHub',
-        'render' => static fn (int $projectId): string => app(GitHubPanel::class)->render($projectId),
-    ];
-
-    return $panels;
-});
-```
-
-The Library checks `projects.view` before displaying panels. Provider routes must check write permissions themselves, validate requests, keep credentials in the provider plugin, and escape user or service data in rendered views.
+Detailed contribution contracts and examples can live in the [GitHub Wiki](https://github.com/Correlander/leantime-lib/wiki) as they are documented. The README will keep the overview and compact contribution index.
 
 ## Other options
 
@@ -95,4 +43,4 @@ These options use Leantime hooks and a request-scoped binding where needed; they
 
 ## License
 
-All rights reserved. See [LICENSE](LICENSE).
+<small>All rights reserved for now. The intent is to permit non-commercial use; the author is considering a future open-source license that requires derivatives to retain the same license and non-commercial terms.</small>
