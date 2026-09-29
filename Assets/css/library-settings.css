@@ -137,6 +137,15 @@
     min-width: 0;
 }
 
+.lt-library-page-heading__actions {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: .8rem;
+    min-width: 0;
+}
+
 .lt-library-support {
     display: inline-flex;
     flex: 0 0 auto;
@@ -171,6 +180,44 @@
     text-decoration: none;
 }
 
+.lt-library-update-check {
+    display: inline-flex;
+    align-items: center;
+    gap: .55rem;
+    padding: .38rem .65rem;
+    border: 1px solid var(--box-border-color, #d9d9d9);
+    border-radius: 999px;
+    background: var(--box-background, #fff);
+    color: var(--secondary-text-color, #68707b);
+    font: inherit;
+    font-size: .82rem;
+    line-height: 1.25;
+    cursor: pointer;
+}
+
+.lt-library-update-check:hover,
+.lt-library-update-check:focus-visible {
+    border-color: var(--main-action-color, #0874a7);
+    color: var(--link-color, #0874a7);
+}
+
+.lt-library-update-check:disabled {
+    cursor: wait;
+    opacity: .65;
+}
+
+.lt-library-update-check__status {
+    max-width: 20rem;
+    margin: -.35rem 0 0;
+    color: var(--secondary-text-color, #68707b);
+    font-size: .78rem;
+    text-align: right;
+}
+
+.lt-library-update-check__status[data-state="error"] {
+    color: var(--error-color, #a12622);
+}
+
 .lt-library-page-heading h1 {
     margin: 0 0 .35rem;
     font-size: clamp(1.65rem, 2.2vw, 2.2rem);
@@ -182,6 +229,10 @@
     max-width: 70rem;
     margin: 0;
     color: var(--secondary-text-color, #68707b);
+}
+
+.lt-library-gui-customization > header p + p {
+    margin-top: .4rem;
 }
 
 .lt-library-preferences,
@@ -1129,6 +1180,10 @@
 @media (max-width: 760px) {
     .lt-library-page-heading {
         flex-direction: column;
+    }
+
+    .lt-library-page-heading__actions {
+        align-self: flex-end;
     }
 
     .lt-library-layout-editor__columns,

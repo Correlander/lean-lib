@@ -8,10 +8,16 @@
                     <h1>lean-library</h1>
                     <p>One place to manage how enabled Leantime plugins and native interface components fit together.</p>
                 </div>
-                <a class="lt-library-support" href="https://www.startpage.com" target="_blank" rel="noopener noreferrer" title="Open lean-library support" aria-label="lean-library support by Alexander K.">
-                    <i class="fa-solid fa-circle-question" aria-hidden="true"></i>
-                    <span><strong>Support</strong><small>Leantime plugin by Alexander K.</small></span>
-                </a>
+                <div class="lt-library-page-heading__actions">
+                    <a class="lt-library-support" href="https://www.startpage.com" target="_blank" rel="noopener noreferrer" title="Open lean-library support" aria-label="lean-library support by Alexander K.">
+                        <i class="fa-solid fa-circle-question" aria-hidden="true"></i>
+                        <span><strong>Support</strong><small>Leantime plugin by Alexander K.</small></span>
+                    </a>
+                    <button type="button" class="lt-library-update-check" data-plugin-metadata-sync data-endpoint="{{ BASE_URL }}/LeantimeLib/plugins/check-for-updates" data-csrf="{{ csrf_token() }}" title="Refresh stored plugin metadata from installed composer.json files. Does not download or update plugin code.">
+                        <span>Check for updates</span><i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </button>
+                    <p class="lt-library-update-check__status" data-plugin-metadata-status role="status" aria-live="polite" hidden></p>
+                </div>
             </header>
 
             @if (!empty($error))
@@ -49,6 +55,7 @@
                     <header>
                         <h2>GUI customization</h2>
                         <p>Arrange native interface parts and plugin contributions through one shared layout. Plugins provide their widgets; the Library controls where they appear and which ones are visible. If the editor looks cramped or squished, press Ctrl + - to zoom out.</p>
+                        <p class="lt-library-workspace__hint">Projects use this layout unless they have a project override.</p>
                     </header>
                     <label class="lt-library-editor-selector">Editing
                         <select aria-label="Choose interface area to customize">

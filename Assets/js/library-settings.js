@@ -8,6 +8,9 @@
         const form = workspace.closest('form');
         const isGlobal = !!(form && form.hasAttribute('data-library-settings-form'));
         const autosaveStatus = isGlobal ? form.querySelector('[data-autosave-status]') : null;
+        if (autosaveStatus && !autosaveStatus.dataset.saveState) {
+            autosaveStatus.textContent = 'Changes automatically saved.';
+        }
         let saveTimer = null;
         let saving = false;
         let saveAgain = false;
@@ -689,6 +692,54 @@
         });
     }
 
+    function installPluginMetadataSync() {
+        const button = document.querySelector('[data-plugin-metadata-sync]');
+        if (!button || button.dataset.installed === '1') return;
+        button.dataset.installed = '1';
+        const status = document.querySelector('[data-plugin-metadata-status]');
+        button.addEventListener('click', async function () {
+            if (button.disabled) return;
+            const originalLabel = button.querySelector('span');
+            button.disabled = true;
+            button.setAttribute('aria-busy', 'true');
+            if (originalLabel) originalLabel.textContent = 'Checking…';
+            if (status) {
+                status.hidden = true;
+                status.removeAttribute('data-state');
+                status.textContent = '';
+            }
+
+            try {
+                const response = await fetch(button.dataset.endpoint, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': button.dataset.csrf
+                    }
+                });
+                const result = await response.json().catch(function () { return {}; });
+                if (!response.ok) throw new Error(result.error || result.message || 'Plugin metadata refresh failed.');
+                if (status) {
+                    status.textContent = result.message || 'Plugin metadata is up to date.';
+                    status.hidden = false;
+                }
+            } catch (error) {
+                if (status) {
+                    status.textContent = error.message || 'Plugin metadata refresh failed.';
+                    status.dataset.state = 'error';
+                    status.hidden = false;
+                }
+                console.error('[LeantimeLib plugin metadata refresh]', error);
+            } finally {
+                button.disabled = false;
+                button.removeAttribute('aria-busy');
+                if (originalLabel) originalLabel.textContent = 'Check for updates';
+            }
+        });
+    }
+
     function scan(root) {
         if (root.matches && root.matches('[data-library-workspace]')) installWorkspace(root);
         if (root.querySelectorAll) {
@@ -700,6 +751,7 @@
 
     function start() {
         scan(document);
+        installPluginMetadataSync();
         if (!window.MutationObserver || !document.body) return;
         new MutationObserver(function (records) {
             records.forEach(function (record) {

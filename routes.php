@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Leantime\Plugins\LeantimeLib\Controllers\ProjectIntegrations;
+use Leantime\Plugins\LeantimeLib\Controllers\Settings;
 use Leantime\Plugins\LeantimeLib\Controllers\UserSchedule;
 
 Route::get('/LeantimeLib/projectIntegrations/{projectId}', [ProjectIntegrations::class, 'show'])
@@ -15,3 +16,6 @@ Route::post('/LeantimeLib/projectIntegrations/{projectId}/todo-layout', [Project
 
 Route::post('/LeantimeLib/my-schedule', [UserSchedule::class, 'post'])
     ->name('leantimeLib.userSchedule.save');
+
+Route::post('/LeantimeLib/plugins/check-for-updates', [Settings::class, 'syncPluginMetadata'])
+    ->name('leantimeLib.plugins.syncMetadata');

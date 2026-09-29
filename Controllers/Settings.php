@@ -41,6 +41,23 @@ class Settings extends Controller
     }
 
     #[RequiresPermission(PluginsPermissions::MANAGE, global: true)]
+    public function syncPluginMetadata()
+    {
+        try {
+            $result = app(\Leantime\Plugins\LeantimeLib\Services\PluginMetadataSynchronizer::class)->syncInstalledPluginMetadata();
+            return response()->json($result);
+        } catch (\Throwable $exception) {
+            Log::error('Leantime Library plugin metadata refresh failed.', [
+                'exception_class' => $exception::class,
+                'exception_code' => (int) $exception->getCode(),
+                'exception_file' => basename($exception->getFile()),
+                'exception_line' => $exception->getLine(),
+            ]);
+            return response()->json(['error' => 'Plugin metadata could not be refreshed. Check the Leantime application log.'], 500);
+        }
+    }
+
+    #[RequiresPermission(PluginsPermissions::MANAGE, global: true)]
     public function post($params)
     {
         $wantsJson = request()->expectsJson();

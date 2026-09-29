@@ -44,7 +44,7 @@ class TodoLayoutEditor
             $html .= '<p data-project-layout-status role="status">Projects use Library defaults until this layout is saved.</p>';
         }
         $html .= '<div class="lt-library-layout-stage"><div class="lt-library-ticket">';
-        $html .= '<div class="lt-library-ticket__chrome"><span aria-hidden="true">☐</span><strong>To-do title</strong><small>Created by a team member</small>';
+        $html .= '<div class="lt-library-ticket__chrome"><span aria-hidden="true">☐</span><strong>To-do title</strong><small>reset-to-defaults</small>';
         if ($global) {
             $html .= '<button type="button" class="lt-library-ticket__reset-button" data-layout-reset-preview data-tooltip="Reset the To-do layout to defaults" aria-label="Reset the To-do layout to defaults">×</button>';
         } else {
@@ -89,7 +89,6 @@ class TodoLayoutEditor
             if (! $tab['enabled']) $html .= $this->widget('tabs', $tab['id'], $tab['label'], $tab['icon'], 'parked', $tab['builtin'] ? 'Leantime tab' : 'Plugin tab', $global, $canEdit);
         }
         $html .= '</ol></aside></div></div>';
-        if ($global) $html .= '<p class="lt-library-workspace__hint">Projects use this layout unless they have a project override.</p>';
         if (! $global && $canEdit) $html .= '<div class="lt-library-layout-editor__actions"><button type="button" class="btn btn-primary" data-project-layout-save>Save project layout</button></div>';
         $html .= '</section>';
         if (! $global) $html .= '</div></section>';
