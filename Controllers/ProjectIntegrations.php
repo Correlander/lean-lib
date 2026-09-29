@@ -11,14 +11,10 @@ use Throwable;
 
 class ProjectIntegrations
 {
-    private PermissionService $permissions;
-
-    public function __construct(private ProjectIntegrationRegistry $registry) {}
-
-    public function init(PermissionService $permissions): void
-    {
-        $this->permissions = $permissions;
-    }
+    public function __construct(
+        private ProjectIntegrationRegistry $registry,
+        private PermissionService $permissions,
+    ) {}
 
     #[RequiresPermission(ProjectsPermissions::VIEW, entityScoped: true)]
     public function show(int $projectId)

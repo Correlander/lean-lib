@@ -10,17 +10,17 @@ $registration->addFooterJs(['library-settings.js', 'project-integrations.js']);
 $registration->addCss(['library-settings.css', 'project-integrations.css']);
 
 EventDispatcher::add_event_listener(
-    'leantime.domain.tickets.templates.showticketmodal.ticketTabs',
+    'leantime.domain.tickets.templates.showTicketModal.ticketTabs',
     [TodoTabRegistry::class, 'renderTabHeaders']
 );
 
 
 EventDispatcher::add_event_listener(
-    'leantime.domain.tickets.templates.showticketmodal.ticketTabsContent',
+    'leantime.domain.tickets.templates.showTicketModal.ticketTabsContent',
     [TodoTabRegistry::class, 'renderTabPanels']
 );
 
 EventDispatcher::add_event_listener(
-    'leantime.domain.tickets.templates.submodules.ticketDetails.beforeEndRightColumn',
+    'leantime.domain.tickets.templates.showTicketModal.beforeEndRightColumn',
     [TodoSectionRegistry::class, 'renderSections']
 );
