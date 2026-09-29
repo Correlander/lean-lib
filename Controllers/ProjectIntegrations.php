@@ -40,7 +40,9 @@ class ProjectIntegrations
         }
     }
 
-    #[RequiresPermission(ProjectsPermissions::EDIT, projectIdParam: 'projectId')]
+    // RouteLoader's permission middleware reads request input, not Laravel path parameters.
+    // Defer its attribute check and authorize the actual routed project ID in this action.
+    #[RequiresPermission(ProjectsPermissions::EDIT, entityScoped: true)]
     public function saveSectionVisibility(Request $request, int $projectId)
     {
         $this->permissions->authorize(ProjectsPermissions::EDIT, $projectId);
@@ -59,7 +61,8 @@ class ProjectIntegrations
         return response()->json($result);
     }
 
-    #[RequiresPermission(ProjectsPermissions::EDIT, projectIdParam: 'projectId')]
+    // The project ID comes from the route path, so authorize it in the action body.
+    #[RequiresPermission(ProjectsPermissions::EDIT, entityScoped: true)]
     public function saveTodoLayout(Request $request, int $projectId)
     {
         $this->permissions->authorize(ProjectsPermissions::EDIT, $projectId);
