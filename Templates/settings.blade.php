@@ -22,6 +22,13 @@
 
             <form method="post" action="{{ BASE_URL }}/LeantimeLib/settings">
                 @csrf
+                <h2>Leantime interface</h2>
+                <p>Optional changes to Leantime’s Apps navigation.</p>
+                <label class="lt-library-sortable__toggle">
+                    <input type="checkbox" name="hideExploreApps" value="1" @if ($hideExploreApps) checked @endif>
+                    Hide Explore Apps and make My Apps the only Apps tab and destination
+                </label>
+
                 <h2>To-do tabs</h2>
                 <p>Drag to set the order of Details, Files, Time Tracking, and plugin tabs. Core tabs stay enabled; plugin tabs can be hidden here.</p>
                 <ol class="lt-library-sortable" data-library-sortable>
@@ -72,7 +79,7 @@
                     @endforeach
                 </ol>
 
-                <button class="btn btn-primary" type="submit">Save To-do layout</button>
+                <button class="btn btn-primary" type="submit">Save Library settings</button>
             </form>
         </div>
     </div>

@@ -6,7 +6,7 @@ Leantime Library owns the To-do modal layout. It combines Leantime’s native ta
 
 Install this project so the manifest is at `app/Plugins/LeantimeLib/composer.json` (the plugin directory must be named exactly `LeantimeLib`). Leantime discovers each direct child folder of `app/Plugins/` that contains a valid `composer.json`; placing this repository folder one level too high or using the repository folder name will prevent discovery. Enable it in **My Apps**. The settings page is available from the plugin controls.
 
-When updating an existing install, copy the updated plugin folder contents, including `dist/todo-layout.js` and `dist/mix-manifest.json`. The manifest keeps the asset at the stable `dist/todo-layout.js` file path and adds a version query for browser cache busting; copying only `composer.json` or `register.php` will leave the modal adapter outdated.
+When updating an existing install, copy the updated plugin folder contents, including all files in `dist/` and `dist/mix-manifest.json`. The manifest keeps assets at stable paths and adds version queries for browser cache busting; copying only `composer.json` or `register.php` will leave browser assets outdated.
 
 ## Current integration
 
@@ -78,7 +78,7 @@ The Library places a **To-do section visibility** control above the provider pan
 
 ## Leantime App menu
 
-Leantime's Apps sidebar item is supplied through the `menuStructures.company.administration` filter. A plugin can change that menu link to `/plugins/myapps` without overwriting core files. That only changes the sidebar entry; the Explore Apps tab and direct `/plugins/marketplace` route remain available.
+The Library settings page has an optional **Hide Explore Apps and make My Apps the only Apps tab and destination** setting. When enabled, a supported `menuStructures.company` filter sends the Apps sidebar item to `/plugins/myapps`; a Library browser adapter hides the Explore Apps tab in Leantime's shared Apps navigation and redirects direct `/plugins/marketplace` visits to `/plugins/myapps`. No Leantime core files are changed. Turn the option off to restore the normal marketplace link, tab, and route behavior.
 
 ## License
 
