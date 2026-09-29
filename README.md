@@ -4,7 +4,7 @@ Leantime Library is a proof-of-concept registry that lets enabled plugins contri
 
 ## Install
 
-Install this project in a folder named exactly `LeantimeLib` under Leantime's `app/Plugins/` directory. Enable it in **My Apps**. The settings page is available from the plugin controls.
+Install this project so the manifest is at `app/Plugins/LeantimeLib/composer.json` (the plugin directory must be named exactly `LeantimeLib`). Leantime discovers each direct child folder of `app/Plugins/` that contains a valid `composer.json`; placing this repository folder one level too high or using the repository folder name will prevent discovery. Enable it in **My Apps**. The settings page is available from the plugin controls.
 
 ## Current integration
 
