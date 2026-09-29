@@ -30,6 +30,14 @@ class TodoTabRegistry
             $icon = htmlspecialchars($tab['icon'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
             echo '<li data-leantimelib-tab="'.$id.'"><a href="#'.$id.'"><span class="'.$icon.'"></span> '.$label.'</a></li>';
         }
+
+        // The native showTicketModal dispatches ticketTabs while building its
+        // header list, before ticketTabsContent panels and before JS tab init.
+        $layout = [
+            'tabs' => array_column($this->getTabs($ticket), 'id'),
+            'sections' => array_column(app(TodoSectionRegistry::class)->getSections($ticket), 'id'),
+        ];
+        echo '<script type="application/json" class="leantimelib-todo-layout-order">'.json_encode($layout, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR).'</script>';
     }
 
     public function renderTabPanels(string $event, array $payload): void
@@ -44,11 +52,6 @@ class TodoTabRegistry
             echo '<div id="'.$id.'" data-leantimelib-panel="'.$id.'">'.$this->renderContribution($tab, $ticket, $params).'</div>';
         }
 
-        $layout = [
-            'tabs' => array_column($this->getTabs($ticket), 'id'),
-            'sections' => array_column(app(TodoSectionRegistry::class)->getSections($ticket), 'id'),
-        ];
-        echo '<script type="application/json" class="leantimelib-todo-layout-order">'.json_encode($layout, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR).'</script>';
     }
 
     public function renderContribution(array $tab, mixed $ticket, array $params = []): string
