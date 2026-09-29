@@ -17,9 +17,8 @@ class TodoTabRegistry
 
     public function __construct(private SettingService $settings) {}
 
-    public function renderTabHeaders(string $event, array $payload): void
+    public function renderTabHeaders(array $params): void
     {
-        $params = $payload[0] ?? [];
         if (! is_array($params)) return;
         $ticket = $params['ticket'] ?? null;
 
@@ -41,9 +40,8 @@ class TodoTabRegistry
         echo '<li class="leantimelib-todo-layout-order" data-layout="'.htmlspecialchars($layoutJson, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'" hidden aria-hidden="true"></li>';
     }
 
-    public function renderTabPanels(string $event, array $payload): void
+    public function renderTabPanels(array $params): void
     {
-        $params = $payload[0] ?? [];
         if (! is_array($params)) return;
         $ticket = $params['ticket'] ?? null;
 
