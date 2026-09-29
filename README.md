@@ -75,3 +75,7 @@ EventDispatcher::add_filter_listener('leantime.plugins.leantimelib.project.integ
 ## Leantime App menu
 
 Leantime's Apps sidebar item is supplied through the `menuStructures.company.administration` filter. A plugin can change that menu link to `/plugins/myapps` without overwriting core files. That only changes the sidebar entry; the Explore Apps tab and direct `/plugins/marketplace` route remain available.
+
+## License
+
+All rights reserved. See [LICENSE](LICENSE).

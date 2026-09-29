@@ -1,12 +1,13 @@
 {
   "name": "Leantime Library",
-  "description": "A shared extension registry for coordinating Leantime plugin contributions.",
-  "version": "0.3.1",
-  "homepage": "",
+  "description": "Central contribution registry for Leantime plugins, including To-do modal layout and project integrations.",
+  "version": "0.3.2",
+  "homepage": "https://github.com/Correlander/leantime-lib",
   "authors": [
     {
-      "name": "Correlander",
-      "email": ""
+      "name": "Alexander K.",
+      "homepage": "https://github.com/Correlander",
+      "role": "Developer"
     }
   ],
   "type": "leantime-plugin",
@@ -14,5 +15,18 @@
     "psr-4": {
       "Leantime\\Plugins\\LeantimeLib\\": ""
     }
+  },
+  "license": "proprietary",
+  "keywords": [
+    "leantime",
+    "leantime-plugin",
+    "plugin-registry",
+    "integrations",
+    "todo"
+  ],
+  "support": {
+    "issues": "https://github.com/Correlander/leantime-lib/issues",
+    "source": "https://github.com/Correlander/leantime-lib",
+    "docs": "https://github.com/Correlander/leantime-lib#readme"
   }
 }

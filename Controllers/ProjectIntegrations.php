@@ -4,17 +4,28 @@ namespace Leantime\Plugins\LeantimeLib\Controllers;
 
 use Illuminate\Support\Facades\Log;
 use Leantime\Core\Auth\Permissions\RequiresPermission;
+use Leantime\Core\Auth\Permissions\PermissionService;
 use Leantime\Domain\Projects\Permissions\ProjectsPermissions;
 use Leantime\Plugins\LeantimeLib\Services\ProjectIntegrationRegistry;
 use Throwable;
 
 class ProjectIntegrations
 {
+    private PermissionService $permissions;
+
     public function __construct(private ProjectIntegrationRegistry $registry) {}
 
-    #[RequiresPermission(ProjectsPermissions::VIEW, projectIdParam: 'projectId')]
+    public function init(PermissionService $permissions): void
+    {
+        $this->permissions = $permissions;
+    }
+
+    #[RequiresPermission(ProjectsPermissions::VIEW, entityScoped: true)]
     public function show(int $projectId)
     {
+        // Native route permission middleware receives request input but not URL path parameters.
+        // Authorize against the actual routed project ID rather than accepting a duplicate query value.
+        $this->permissions->authorize(ProjectsPermissions::VIEW, $projectId);
         try {
             return response()->json(['html' => $this->registry->renderPanels($projectId)]);
         } catch (Throwable $exception) {
