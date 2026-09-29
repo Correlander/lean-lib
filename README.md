@@ -36,6 +36,25 @@ Contributed tabs are ordered by their saved Library preference. New tabs not yet
 
 `leantime.plugins.leantimelib.todo.detail.tabs` is the first contribution point. Contributors append metadata; they do not patch Leantime templates or call another plugin's UI code directly. The Library owns collection, validation, ordering, and rendering into the native tab events. Future placements should get separate, target-specific filter keys and Leantime hook adapters rather than a generic nested UI schema.
 
+### Project integrations panels
+
+Enabled plugins may contribute a project-scoped panel to the native **Project Settings → Integrations** content. The Library replaces only the body of that stock Integrations panel with the registered plugin panels; other project settings tabs remain Leantime's native view. The endpoint checks `projects.view` for the requested project before rendering providers. Provider save routes must enforce their own write permission.
+
+Register a panel with the filter `leantime.plugins.leantimelib.project.integrations.panels`:
+
+```php
+EventDispatcher::add_filter_listener('leantime.plugins.leantimelib.project.integrations.panels', function (array $panels, array $params): array {
+    $panels[] = [
+        'id' => 'github',
+        'label' => 'GitHub',
+        'render' => static fn (int $projectId): string => app(GitHubPanel::class)->render($projectId),
+    ];
+    return $panels;
+});
+```
+
+`render` must return trusted HTML for the given project ID. Keep credentials in the provider plugin, validate each request there, and escape user/provider values in its view. This is the first panel contract and is intentionally limited to project integrations.
+
 ## Leantime App menu
 
 Leantime's Apps sidebar item is supplied through the `menuStructures.company.administration` filter. A plugin can change that menu link to `/plugins/myapps` without overwriting core files. That only changes the sidebar entry; the Explore Apps tab and direct `/plugins/marketplace` route remain available.

@@ -1,0 +1,8 @@
+.projectTabs #integrations:not([data-leantimelib-loaded="1"]) > * { visibility: hidden; }
+.projectTabs #integrations:not([data-leantimelib-loaded="1"])::after {
+    content: "Loading project integrations…";
+    display: block;
+    visibility: visible;
+    padding: 1rem;
+}
+.leantimelib-integration-panel { margin: 1rem 0 1.5rem; }
