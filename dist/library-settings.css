@@ -676,6 +676,65 @@
     border-right: 1px solid var(--box-border-color, #d9d9d9);
 }
 
+/* Keep the icon picker and title as one control, matching Leantime's document
+ * icon/title editor. The wrapper owns the border; neither child draws a bubble. */
+.lt-library-preview-section h3 .lt-library-section-editor {
+    display: flex;
+    flex: 1 1 0;
+    align-items: stretch;
+    min-width: 0;
+    overflow: visible;
+}
+
+.lt-library-preview-section h3 .lt-library-section-editor .lt-library-icon-picker {
+    display: flex;
+    flex: 0 0 2.45rem;
+    align-items: stretch;
+    width: 2.45rem;
+    min-width: 2.45rem;
+}
+
+.lt-library-preview-section h3 .lt-library-section-editor .iconpicker-container {
+    display: grid;
+    flex: 1 1 auto;
+    place-items: center;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    padding: .2rem;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.lt-library-preview-section h3 .lt-library-section-editor .lt-library-icon-picker {
+    border-right: 1px solid var(--box-border-color, #d9d9d9);
+}
+
+.lt-library-preview-section h3 input.lt-library-section-title {
+    display: block;
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+    height: auto;
+    margin: 0;
+    padding: .35rem .65rem;
+    border: 0 !important;
+    border-radius: 0 !important;
+    outline: 0;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: inherit;
+    font: inherit;
+    font-weight: 700;
+}
+
+.lt-library-preview-section h3 input.lt-library-section-title:focus {
+    outline: 0;
+    box-shadow: none !important;
+}
+
 .lt-library-section-editor > [data-section-title] {
     min-width: 0;
     padding: .35rem .6rem;
@@ -805,8 +864,8 @@
 
 .lt-library-preview-section h3 .lt-library-section-handle {
     margin-left: auto;
-    flex: 0 0 1.8rem;
-    min-width: 1.8rem;
+    flex: 0 0 1.35rem;
+    min-width: 1.35rem;
     border: 0;
     background: transparent;
     color: var(--secondary-text-color, #68707b);
@@ -814,10 +873,10 @@
 }
 
 .lt-library-preview-section h3 button[data-section-park] {
-    flex: 0 0 1.7rem;
-    min-width: 1.7rem;
-    width: 1.7rem;
-    height: 1.7rem;
+    flex: 0 0 1.45rem;
+    min-width: 1.45rem;
+    width: 1.45rem;
+    height: 1.45rem;
     padding: 0;
     border: 1px solid var(--box-border-color, #cbd0d7);
     border-radius: 50%;
@@ -1001,7 +1060,7 @@
 .leantimelib-sidebar-group > summary {
     display: flex;
     align-items: center;
-    gap: .4rem;
+    gap: .4em;
     color: #0874a7;
     font-weight: 700;
     font-family: inherit;
@@ -1017,8 +1076,23 @@
 
 .leantimelib-sidebar-group__chevron {
     flex: 0 0 auto;
-    margin-right: .05rem;
     transition: transform .14s ease;
+}
+
+.leantimelib-sidebar-group [data-leantimelib-group-icon] {
+    flex: 0 0 auto;
+}
+
+.leantimelib-sidebar-group [data-leantimelib-group-label] {
+    min-width: 0;
+}
+
+/* Native Organization and Schedule headings get the same trailing spacing. */
+#accordion_toggle_tickets-organization,
+#accordion_toggle_tickets-dates {
+    display: inline-flex;
+    align-items: center;
+    gap: .4em;
 }
 
 .leantimelib-sidebar-group:not([open]) .leantimelib-sidebar-group__chevron {
