@@ -2,6 +2,7 @@
 
 use Leantime\Core\Events\EventDispatcher;
 use Leantime\Domain\Plugins\Services\Registration;
+use Leantime\Plugins\LeantimeLib\Services\TodoSectionRegistry;
 use Leantime\Plugins\LeantimeLib\Services\TodoTabRegistry;
 
 $registration = app()->makeWith(Registration::class, ['pluginId' => 'LeantimeLib']);
@@ -17,4 +18,9 @@ EventDispatcher::add_event_listener(
 EventDispatcher::add_event_listener(
     'leantime.domain.tickets.templates.showticketmodal.ticketTabsContent',
     [TodoTabRegistry::class, 'renderTabPanels']
+);
+
+EventDispatcher::add_event_listener(
+    'leantime.domain.tickets.templates.submodules.ticketdetails.beforeEndRightColumn',
+    [TodoSectionRegistry::class, 'renderSections']
 );

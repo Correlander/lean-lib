@@ -1,7 +1,7 @@
 {
   "name": "Leantime Library",
   "description": "A shared extension registry for coordinating Leantime plugin contributions.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "homepage": "",
   "authors": [
     {

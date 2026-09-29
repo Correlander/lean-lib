@@ -5,12 +5,12 @@
         let dragged = null;
 
         list.addEventListener('dragstart', function (event) {
-            const item = event.target.closest('[data-tab-id]');
+            const item = event.target.closest('[data-order-id]');
             if (!item) return;
             dragged = item;
             item.classList.add('is-dragging');
             event.dataTransfer.effectAllowed = 'move';
-            event.dataTransfer.setData('text/plain', item.dataset.tabId);
+            event.dataTransfer.setData('text/plain', item.dataset.orderId);
         });
 
         list.addEventListener('dragend', function () {
@@ -22,7 +22,7 @@
             event.preventDefault();
             if (!dragged) return;
 
-            const target = event.target.closest('[data-tab-id]');
+            const target = event.target.closest('[data-order-id]');
             if (!target || target === dragged) return;
 
             const bounds = target.getBoundingClientRect();
@@ -33,7 +33,7 @@
         list.addEventListener('click', function (event) {
             const button = event.target.closest('[data-move]');
             if (!button) return;
-            const item = button.closest('[data-tab-id]');
+            const item = button.closest('[data-order-id]');
             if (button.dataset.move === 'up' && item.previousElementSibling) {
                 list.insertBefore(item, item.previousElementSibling);
             } else if (button.dataset.move === 'down' && item.nextElementSibling) {

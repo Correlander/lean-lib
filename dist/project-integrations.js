@@ -1,6 +1,9 @@
 (function () {
     'use strict';
 
+    const heading = '<header class="leantimelib-integrations-heading"><h3>Correlander’s Leantime Integration Library</h3><p>Project integration settings provided by enabled Leantime plugins.</p></header>';
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+
     function start() {
         const panel = document.querySelector('.projectTabs #integrations');
         const base = window.leantime && window.leantime.appUrl;
@@ -8,6 +11,7 @@
         if (!panel || !base || !match) return;
 
         const projectId = match[1];
+        panel.innerHTML = heading + '<p role="status">Loading integrations from the Library…</p>';
         const resultParams = new URLSearchParams();
         ['github_error', 'github_connected'].forEach(function (key) {
             const value = new URLSearchParams(window.location.search).get(key);
@@ -17,18 +21,19 @@
         const url = base.replace(/\/$/, '') + '/LeantimeLib/projectIntegrations/' + encodeURIComponent(projectId) + (query ? '?' + query : '');
         fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
             .then(function (response) {
-                if (!response.ok) throw new Error('Library integration panels could not be loaded.');
+                if (!response.ok) throw new Error('The Library endpoint returned HTTP ' + response.status + '.');
                 return response.json();
             })
             .then(function (result) {
-                panel.innerHTML = result.html || '<p>No project integrations are registered.</p>';
+                if (!result || typeof result.html !== 'string') throw new Error('The Library endpoint returned an invalid response.');
+                panel.innerHTML = heading + result.html;
                 panel.dataset.leantimelibLoaded = '1';
                 panel.dispatchEvent(new CustomEvent('leantimelib:integrations-loaded', { bubbles: true, detail: { projectId: projectId } }));
             })
             .catch(function (error) {
-                panel.innerHTML = '<div class="alert alert-warning" role="alert">Project integrations could not be loaded. Reload this page to try again.</div>';
+                panel.innerHTML = heading + '<div class="alert alert-warning" role="alert">Project integrations could not be loaded. '+escapeHtml(error.message)+' Check the browser console and Leantime application log for details.</div>';
                 panel.dataset.leantimelibLoaded = '1';
-                console.error('[LeantimeLib integrations]', error);
+                console.error('[LeantimeLib integrations]', { endpoint: url, projectId: projectId, error: error });
             });
     }
 
