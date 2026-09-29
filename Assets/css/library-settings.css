@@ -409,3 +409,8 @@
         border-left: 0;
     }
 }
+
+/* Leantime 3.10 styles form groups, rows and tabs with display rules that override [hidden]. */
+.leantimelib-layout-hidden {
+    display: none !important;
+}

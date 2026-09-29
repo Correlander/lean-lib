@@ -11,6 +11,16 @@
         workEnd: '[name="editTo"]', plannedHours: '[name="planHours"]'
     };
 
+    // Leantime's CSS assigns display values to .form-group, .row, .ui-tabs-tab and
+    // .ui-tabs-panel. Those author rules override the browser's [hidden] presentation.
+    function setLayoutHidden(element, hidden) {
+        if (!element) return;
+        const shouldHide = Boolean(hidden);
+        element.hidden = shouldHide;
+        element.classList.toggle('leantimelib-layout-hidden', shouldHide);
+        element.setAttribute('aria-hidden', shouldHide ? 'true' : 'false');
+    }
+
     function reorderTabs(container, order) {
         const list = Array.from(container.children).find((child) => child.tagName === 'UL');
         if (!list || !Array.isArray(order)) return;
@@ -26,8 +36,7 @@
         const orderedHeaders = order.map((id) => headers.get(id)).filter(Boolean);
         headers.forEach((item, id) => {
             const visible = order.includes(id);
-            item.hidden = !visible;
-            item.setAttribute('aria-hidden', visible ? 'false' : 'true');
+            setLayoutHidden(item, !visible);
             if (!visible) orderedHeaders.push(item);
         });
         orderedHeaders.forEach((item, index) => {
@@ -41,8 +50,7 @@
         const orderedPanels = order.map((id) => panels.get(id)).filter(Boolean);
         panels.forEach((panel, id) => {
             const visible = order.includes(id);
-            panel.hidden = !visible;
-            panel.setAttribute('aria-hidden', visible ? 'false' : 'true');
+            setLayoutHidden(panel, !visible);
             if (!visible) orderedPanels.push(panel);
         });
 
@@ -102,7 +110,10 @@
             auxiliaryZone.dataset.leantimelibFieldZone = 'auxiliary';
             const footer = mainColumn.querySelector('.sticky-modal-footer');
             let anchor = footer ? footer.nextSibling : null;
-            while (anchor && ['BR', 'HR'].includes(anchor.tagName)) anchor = anchor.nextSibling;
+            // Retain Leantime's whitespace, line break and divider after the Save buttons.
+            while (anchor && ((anchor.nodeType === Node.TEXT_NODE && !anchor.textContent.trim()) || ['BR', 'HR'].includes(anchor.tagName))) {
+                anchor = anchor.nextSibling;
+            }
             mainColumn.insertBefore(auxiliaryZone, anchor);
         }
 
@@ -128,16 +139,14 @@
                     ? nativeSections[sectionId]
                     : (requestedZone === 'sidebar' ? sidebarZone : mainZone));
             if (field.parentElement !== target) target.appendChild(field);
-            field.hidden = requestedZone === 'hidden';
-            field.setAttribute('aria-hidden', requestedZone === 'hidden' ? 'true' : 'false');
+            setLayoutHidden(field, requestedZone === 'hidden');
         });
 
         (layout.sidebar || []).forEach((id) => {
             if (Object.prototype.hasOwnProperty.call(nativeFields, id)) return;
             const section = details.querySelector('.leantimelib-todo-section[data-leantimelib-section="' + CSS.escape(id) + '"]');
             if (section) {
-                section.hidden = false;
-                section.setAttribute('aria-hidden', 'false');
+                setLayoutHidden(section, false);
             }
         });
         (layout.hidden || []).forEach((id) => {
@@ -145,8 +154,7 @@
             const section = details.querySelector('.leantimelib-todo-section[data-leantimelib-section="' + CSS.escape(id) + '"]');
             if (section && section.parentElement !== sidebarZone) sidebarZone.appendChild(section);
             if (section) {
-                section.hidden = true;
-                section.setAttribute('aria-hidden', 'true');
+                setLayoutHidden(section, true);
             }
         });
 
@@ -156,8 +164,7 @@
             const row = heading && heading.closest('.row.marginBottom');
             if (!row) return;
             const visible = (layout.sidebar || []).includes(sectionId);
-            row.hidden = !visible;
-            row.setAttribute('aria-hidden', visible ? 'false' : 'true');
+            setLayoutHidden(row, !visible);
         });
 
         // Order whole sidebar units by the same saved sequence shown in the Library editor.
@@ -182,12 +189,11 @@
         (layout.sidebar || []).forEach((id) => {
             const unit = sidebarUnits.get(id);
             if (!unit) return;
-            unit.hidden = false;
-            unit.setAttribute('aria-hidden', 'false');
+            setLayoutHidden(unit, false);
             if (unit !== sidebarAnchor) sidebar.insertBefore(unit, sidebarAnchor);
             sidebarAnchor = unit.nextSibling;
         });
-        sidebarZone.hidden = true;
+        setLayoutHidden(sidebarZone, true);
         ['organization', 'schedule'].forEach((id) => {
             const parent = nativeSections[id];
             if (!parent) return;
