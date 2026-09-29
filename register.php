@@ -10,13 +10,13 @@ $registration->addFooterJs(['library-settings.js', 'project-integrations.js', 't
 $registration->addCss(['library-settings.css', 'project-integrations.css']);
 
 EventDispatcher::add_event_listener(
-    'leantime.domain.tickets.templates.*.ticketTabs',
+    'leantime.*.ticketTabs',
     [TodoTabRegistry::class, 'renderTabHeaders']
 );
 
 
 EventDispatcher::add_event_listener(
-    'leantime.domain.tickets.templates.*.ticketTabsContent',
+    'leantime.*.ticketTabsContent',
     [TodoTabRegistry::class, 'renderTabPanels']
 );
 
