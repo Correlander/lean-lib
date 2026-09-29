@@ -1,6 +1,6 @@
 # Leantime Library
 
-Leantime Library owns the To-do modal layout. It combines Leantime’s native tabs and sidebar sections with enabled-plugin contributions, then lets administrators order all of them and hide plugin contributions from one settings page.
+Leantime Library owns the To-do modal layout. Its ticket-shaped editor treats the native modal tabs, individual To-do fields, and plugin sections as draggable widgets. Administrators arrange or park widgets in one canvas; projects inherit the instance layout until someone saves an override.
 
 ## Install
 
@@ -32,15 +32,15 @@ EventDispatcher::add_filter_listener('leantime.plugins.leantimelib.todo.detail.t
 
 The `render` callback owns only the panel content. Return trusted HTML from the contributing plugin's view renderer; the Library validates IDs and metadata, renders panel content, and handles the modal layout. `$params['ticket']` is the current ticket model when rendering tabs, and `null` when the contribution list is shown in Library settings. Register contributions regardless of the current ticket so the settings list remains stable.
 
-The Library settings page is a drag-and-drop editor for the modal's top-level tabs (Details, Files, Time Tracking, and plugin tabs) and Details sidebar sections (Organization, Schedule, and plugin sections). Each group has visible and hidden drop areas. Native components can be hidden too, except that one top-level tab must remain visible. A project inherits the instance layout until someone saves a project-specific override in **Project Settings → Integrations**; **Use Library defaults** clears that override. The saved layout is applied to Leantime's native modal after its contents load.
+The Library settings page previews the modal with a tab strip, main details area, sidebar, and a parked-widget area. Native To-do controls (title, status, priority, effort, assignee, collaborators, due date, tags, description, subtasks, discussion, type, project, milestone, sprint, related To-do, schedule dates, and planned hours) can move between main details and sidebar or be parked. Tabs and plugin sidebar sections can be reordered and parked. At least one top-level tab must stay visible. The same editor appears in **Project Settings → Integrations**; **Use Library defaults** clears the project override. A browser adapter applies the saved layout to Leantime's modal after its contents load.
 
 ## Plugin contract
 
-The component types currently supported are `todo.tab` and `todo.detailSection`, exposed respectively through `leantime.plugins.leantimelib.todo.detail.tabs` and `leantime.plugins.leantimelib.todo.detail.sections`. Provider plugins append metadata and a content renderer; they do not inject content into Leantime templates or call another plugin's UI code. The Library owns collection, validation, visibility, ordering, rendering, and the saved layout. It uses Leantime's native modal events and a Library-owned browser adapter to arrange the modal without changing Leantime core files. Leantime 3.10.0 does not expose individual native form fields inside the Details tab as movable plugin components; those remain inside their native tab.
+The provider contribution types are `todo.tab` and `todo.detailSection`, exposed respectively through `leantime.plugins.leantimelib.todo.detail.tabs` and `leantime.plugins.leantimelib.todo.detail.sections`. Native To-do fields are registered as Library widgets, while plugins contribute tabs or sidebar sections with metadata and a content renderer. Provider plugins do not modify Leantime templates or call another plugin's UI code. The Library owns collection, validation, visibility, ordering, rendering, and saved layouts. It uses Leantime's native modal events and a Library browser adapter without changing Leantime core files.
 
 ### To-do inline sections
 
-Plugins can also contribute an inline section using `leantime.plugins.leantimelib.todo.detail.sections`. The Library collects these contributions at Leantime 3.10.0's native `beforeEndRightColumn` event. Its browser adapter then orders them alongside Leantime's native Organization and Schedule sections according to the Library setting. Administrators can hide individual plugin sections there; core sections remain enabled.
+Plugins can contribute an inline sidebar widget using `leantime.plugins.leantimelib.todo.detail.sections`. The Library collects these contributions at Leantime 3.10.0's native `beforeEndRightColumn` event and the browser adapter places them alongside the individual native sidebar fields. Administrators can order or park each contributed widget in the shared layout editor.
 
 ```php
 EventDispatcher::add_filter_listener('leantime.plugins.leantimelib.todo.detail.sections', function (array $sections, array $params): array {
@@ -74,11 +74,11 @@ EventDispatcher::add_filter_listener('leantime.plugins.leantimelib.project.integ
 
 `render` must return trusted HTML for the given project ID. Keep credentials in the provider plugin, validate each request there, and escape user/provider values in its view. This is the first panel contract and is intentionally limited to project integrations.
 
-The Library places a **To-do section visibility** control above the provider panels. It lists every section contributed by an enabled plugin. The initial state inherits that section's Library-wide default; changing a checkbox stores a project-specific override, and **Use default** removes that override. Visibility overrides are saved through Leantime's `projectsettings.{projectId}.*` setting namespace and affect only that project's To-do modals; they do not hide or disable the provider's project settings panel.
+The project layout editor includes enabled plugin widgets and native fields. Saving writes the project's tab visibility, plugin widget visibility/order, and field positions under Leantime's `projectsettings.{projectId}.*` settings namespace; it does not hide or disable the provider's project settings panel.
 
 ## Leantime App menu
 
-The Library settings page has an optional **Hide Explore Apps and make My Apps the only Apps tab and destination** setting. When enabled, a supported `menuStructures.company` filter sends the Apps sidebar item to `/plugins/myapps`; a Library browser adapter hides the Explore Apps tab in Leantime's shared Apps navigation and redirects direct `/plugins/marketplace` visits to `/plugins/myapps`. It also offers compact invite onboarding, which keeps account setup and applies the invite's saved defaults for appearance and schedule. The Library adds a self-service **Work schedule** tab under **Profile settings** so users can adjust the schedule later. The starter-project option suppresses Leantime's generated starter project and sample content. For that, Leantime 3.10.0 has no cancellation hook around the Help service, so the Library uses a narrow request-scoped service binding; all other Help behavior remains intact. No Leantime core files are changed.
+The Library settings page has an optional **Hide Explore Apps and make My Apps the only Apps tab and destination** setting. When enabled, a supported `menuStructures.company` filter sends the Apps sidebar item to `/plugins/myapps`; a Library browser adapter hides the Explore Apps tab in Leantime's shared Apps navigation and redirects direct `/plugins/marketplace` visits to `/plugins/myapps`. **Fast Onboarding** is one toggle that keeps account setup, applies the invite's saved defaults for appearance and schedule, and prevents automatic starter-project/sample-content creation. When enabled, the Library adds a self-service **Work schedule** tab under **Profile settings**; that tab is not registered when Fast Onboarding is off. Leantime 3.10.0 has no cancellation hook around the Help service, so the Library uses a narrow request-scoped service binding for starter-project suppression. No Leantime core files are changed.
 
 ## License
 

@@ -35,7 +35,7 @@ class TodoTabRegistry
         // header list, before ticketTabsContent panels and before JS tab init.
         $layout = [
             'tabs' => array_column($this->getTabs($ticket), 'id'),
-            'sections' => array_column(app(TodoSectionRegistry::class)->getSections($ticket), 'id'),
+            'fields' => app(TodoFieldRegistry::class)->getLayout(is_object($ticket) ? (int) ($ticket->projectId ?? 0) : null),
         ];
         $layoutJson = json_encode($layout, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR);
         echo '<li class="leantimelib-todo-layout-order" data-layout="'.htmlspecialchars($layoutJson, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'" hidden aria-hidden="true"></li>';

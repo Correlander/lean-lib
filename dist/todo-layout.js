@@ -3,6 +3,13 @@
 
     const selector = '.ticketTabs';
     let scheduled = false;
+    const nativeFields = {
+        headline: '[name="headline"]', status: '#status-select', priority: '#priority', effort: '#storypoints',
+        editor: '#editorId', collaborators: '#collaborators', dueDate: '[name="dateToFinish"]', tags: '#tags',
+        description: '#descriptionEditor', subtasks: '@subtasks', discussion: '@discussion', type: '#type', project: '[name="projectId"]', milestone: '[name="milestoneid"]',
+        sprint: '#sprint-select', related: '[name="dependingTicketId"]', workStart: '[name="editFrom"]',
+        workEnd: '[name="editTo"]', plannedHours: '[name="planHours"]'
+    };
 
     function reorderTabs(container, order) {
         const list = Array.from(container.children).find((child) => child.tagName === 'UL');
@@ -63,36 +70,104 @@
         }
     }
 
-    function reorderSidebar(container, order) {
-        if (!container || !Array.isArray(order)) return;
-        const elements = new Map();
-        const organization = container.querySelector('#accordion_link_tickets-organization');
-        const schedule = container.querySelector('#accordion_link_tickets-dates');
-
-        if (organization) {
-            const row = organization.closest('.row.marginBottom') || organization.closest('.row');
-            if (row) elements.set('organization', row);
+    function applyFields(details, layout) {
+        if (!details || !layout || typeof layout !== 'object') return;
+        const main = details.querySelector('.col-md-9 > .row.marginBottom > .col-md-12');
+        const sidebar = details.querySelector(':scope > .row > .col-md-3');
+        if (!main || !sidebar) return;
+        let mainZone = main.querySelector(':scope > [data-leantimelib-field-zone="main"]');
+        let sidebarZone = sidebar.querySelector(':scope > [data-leantimelib-field-zone="sidebar"]');
+        if (!mainZone) {
+            mainZone = document.createElement('div');
+            mainZone.className = 'leantimelib-native-fields';
+            mainZone.dataset.leantimelibFieldZone = 'main';
+            main.insertBefore(mainZone, main.firstChild);
         }
-        if (schedule) {
-            const row = schedule.closest('.row.marginBottom') || schedule.closest('.row');
-            if (row) elements.set('schedule', row);
+        if (!sidebarZone) {
+            sidebarZone = document.createElement('div');
+            sidebarZone.className = 'leantimelib-native-fields';
+            sidebarZone.dataset.leantimelibFieldZone = 'sidebar';
+            sidebar.insertBefore(sidebarZone, sidebar.firstChild);
         }
-        container.querySelectorAll('.leantimelib-todo-section[data-leantimelib-section]').forEach((section) => {
-            elements.set(section.dataset.leantimelibSection, section);
+
+        Object.entries(nativeFields).forEach(([id, fieldSelector]) => {
+            let field = details.querySelector('[data-leantimelib-field="' + id + '"]');
+            if (!field) {
+                if (fieldSelector === '@subtasks') field = wrapAuxiliary(details, 'subtasks');
+                else if (fieldSelector === '@discussion') field = wrapAuxiliary(details, 'discussion');
+                else {
+                    const input = details.querySelector(fieldSelector);
+                    field = input && (input.closest('.form-group') || input);
+                }
+                if (field) field.dataset.leantimelibField = id;
+            }
+            if (!field) return;
+            const requestedZone = (layout.main || []).includes(id) ? 'main'
+                : (layout.sidebar || []).includes(id) ? 'sidebar' : 'hidden';
+            const target = requestedZone === 'sidebar' ? sidebarZone : mainZone;
+            if (field.parentElement !== target) target.appendChild(field);
+            field.hidden = requestedZone === 'hidden';
+            field.setAttribute('aria-hidden', requestedZone === 'hidden' ? 'true' : 'false');
         });
 
-        elements.forEach((element, id) => {
-            const visible = order.includes(id);
-            element.hidden = !visible;
-            element.setAttribute('aria-hidden', visible ? 'false' : 'true');
+        (layout.sidebar || []).forEach((id) => {
+            if (Object.prototype.hasOwnProperty.call(nativeFields, id)) return;
+            const section = details.querySelector('.leantimelib-todo-section[data-leantimelib-section="' + CSS.escape(id) + '"]');
+            if (section && section.parentElement !== sidebarZone) sidebarZone.appendChild(section);
+            if (section) {
+                section.hidden = false;
+                section.setAttribute('aria-hidden', 'false');
+            }
         });
-        const ordered = order.map((id) => elements.get(id)).filter((element) => element && element.parentElement === container);
-        elements.forEach((element, id) => {
-            if (element.parentElement === container && !order.includes(id)) ordered.push(element);
+        (layout.hidden || []).forEach((id) => {
+            if (Object.prototype.hasOwnProperty.call(nativeFields, id)) return;
+            const section = details.querySelector('.leantimelib-todo-section[data-leantimelib-section="' + CSS.escape(id) + '"]');
+            if (section && section.parentElement !== sidebarZone) sidebarZone.appendChild(section);
+            if (section) {
+                section.hidden = true;
+                section.setAttribute('aria-hidden', 'true');
+            }
         });
-        ordered.forEach((element, index) => {
-            if (container.children[index] !== element) container.insertBefore(element, container.children[index] || null);
+
+        if (details.dataset.leantimelibNativeAccordionsRemoved !== '1') {
+            ['organization', 'dates'].forEach((name) => {
+                const heading = details.querySelector('#accordion_link_tickets-' + name);
+                const row = heading && heading.closest('.row.marginBottom');
+                if (row) row.remove();
+            });
+            details.dataset.leantimelibNativeAccordionsRemoved = '1';
+        }
+
+        // Keep each zone in the saved order. Hidden controls remain in the form,
+        // so existing values still submit when a widget is parked.
+        ['main', 'sidebar'].forEach((zoneName) => {
+            const zone = zoneName === 'main' ? mainZone : sidebarZone;
+            const order = layout[zoneName] || [];
+            const nodes = new Map(Array.from(zone.children).map((node) => [node.dataset.leantimelibField || node.dataset.leantimelibSection, node]));
+            const ordered = order.map((id) => nodes.get(id)).filter(Boolean);
+            nodes.forEach((node) => { if (!ordered.includes(node)) ordered.push(node); });
+            ordered.forEach((node, index) => { if (zone.children[index] !== node) zone.insertBefore(node, zone.children[index] || null); });
         });
+    }
+
+    function wrapAuxiliary(details, kind) {
+        const iconSelector = kind === 'subtasks' ? '.fa-sitemap' : '.fa-comments';
+        const heading = Array.from(details.querySelectorAll('h4')).find((item) => item.querySelector(iconSelector));
+        if (!heading) return null;
+        const wrapper = document.createElement('section');
+        wrapper.className = 'leantimelib-auxiliary-widget';
+        heading.parentNode.insertBefore(wrapper, heading);
+        wrapper.appendChild(heading);
+        if (kind === 'subtasks') {
+            const list = details.querySelector('#ticketSubtasks');
+            const indicator = list && list.nextElementSibling;
+            if (list) wrapper.appendChild(list);
+            if (indicator && indicator.classList.contains('htmx-indicator')) wrapper.appendChild(indicator);
+        } else {
+            const content = heading.nextElementSibling;
+            if (content) wrapper.appendChild(content);
+        }
+        return wrapper;
     }
 
     function apply(container) {
@@ -115,7 +190,7 @@
 
         reorderTabs(container, layout.tabs || []);
         const details = container.querySelector('#ticketdetails');
-        reorderSidebar(details && details.querySelector('.col-md-3'), layout.sections || []);
+        applyFields(details, layout.fields || {});
         const signature = JSON.stringify(layout);
         if (container.dataset.leantimelibLayoutApplied !== signature) {
             container.dataset.leantimelibLayoutApplied = signature;

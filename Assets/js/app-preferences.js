@@ -27,7 +27,7 @@
     }
 
     function simplifyInviteFlow() {
-        if (!preferences.hideOnboarding) return;
+        if (!preferences.fastOnboarding) return;
         const invitePath = window.location.pathname.match(/\/auth\/userinvite\/[^/]+/i);
         if (!invitePath) return;
         const step = Number(new URLSearchParams(window.location.search).get('step') || 1);

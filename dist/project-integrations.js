@@ -90,12 +90,21 @@
         }
     }
 
-    function getLaneState(group) {
-        const visible = group.querySelector('[data-library-lane="visible"]');
-        const hidden = group.querySelector('[data-library-lane="hidden"]');
-        const order = Array.from(visible.querySelectorAll('[data-widget-id]')).map((item) => item.dataset.widgetId)
-            .concat(Array.from(hidden.querySelectorAll('[data-widget-id]')).map((item) => item.dataset.widgetId));
-        return { order: order, visible: Array.from(visible.querySelectorAll('[data-widget-id]')).map((item) => item.dataset.widgetId) };
+    function getProjectState(control, kind, visibleZone) {
+        const ids = function (zone) {
+            return Array.from(control.querySelector('[data-library-zone="' + zone + '"]').querySelectorAll('[data-widget-kind="' + kind + '"]')).map((item) => item.dataset.widgetId);
+        };
+        const visible = ids(visibleZone);
+        const parked = ids('parked');
+        return { order: visible.concat(parked), visible: visible };
+    }
+
+    function getFieldState(control) {
+        const ids = function (zone) {
+            const selector = zone === 'main' ? '[data-widget-kind="fields"]' : '[data-widget-kind="fields"], [data-widget-kind="sections"]';
+            return Array.from(control.querySelector('[data-library-zone="' + zone + '"]').querySelectorAll(selector)).map((item) => item.dataset.widgetId);
+        };
+        return { main: ids('main'), sidebar: ids('sidebar'), hidden: ids('parked') };
     }
 
     async function saveProjectLayout(control, reset) {
@@ -104,12 +113,12 @@
         buttons.forEach((button) => { button.disabled = true; });
         if (status) status.textContent = reset ? 'Restoring Library defaults…' : 'Saving project layout…';
         try {
-            const tabs = getLaneState(control.querySelector('[data-layout-kind="tabs"]'));
-            const sections = getLaneState(control.querySelector('[data-layout-kind="sections"]'));
+            const tabs = getProjectState(control, 'tabs', 'tabs');
+            const fields = getFieldState(control);
             const response = await fetch(control.dataset.endpoint, {
                 method: 'POST', credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': control.dataset.csrf || '' },
-                body: JSON.stringify({ tabs: tabs, sections: sections, reset: !!reset })
+                body: JSON.stringify({ tabs: tabs, fields: fields, reset: !!reset })
             });
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || result.message || 'Could not save this project layout.');

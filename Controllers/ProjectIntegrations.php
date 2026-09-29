@@ -9,6 +9,7 @@ use Leantime\Core\Auth\Permissions\PermissionService;
 use Leantime\Core\Exceptions\ValidationException;
 use Leantime\Domain\Projects\Permissions\ProjectsPermissions;
 use Leantime\Plugins\LeantimeLib\Services\ProjectIntegrationRegistry;
+use Leantime\Plugins\LeantimeLib\Services\TodoFieldRegistry;
 use Throwable;
 
 class ProjectIntegrations
@@ -62,17 +63,19 @@ class ProjectIntegrations
     public function saveTodoLayout(Request $request, int $projectId)
     {
         $this->permissions->authorize(ProjectsPermissions::EDIT, $projectId);
-        $input = ValidationException::validate($request->only(['tabs', 'sections', 'reset']), [
+        $input = ValidationException::validate($request->only(['tabs', 'fields', 'reset']), [
             'tabs' => ['required', 'array'],
             'tabs.order' => ['required', 'array'],
             'tabs.order.*' => ['required', 'string', 'max:120'],
             'tabs.visible' => ['required', 'array'],
             'tabs.visible.*' => ['required', 'string', 'max:120'],
-            'sections' => ['required', 'array'],
-            'sections.order' => ['required', 'array'],
-            'sections.order.*' => ['required', 'string', 'max:120'],
-            'sections.visible' => ['required', 'array'],
-            'sections.visible.*' => ['required', 'string', 'max:120'],
+            'fields' => ['required', 'array'],
+            'fields.main' => ['required', 'array'],
+            'fields.main.*' => ['required', 'string', 'max:120'],
+            'fields.sidebar' => ['required', 'array'],
+            'fields.sidebar.*' => ['required', 'string', 'max:120'],
+            'fields.hidden' => ['required', 'array'],
+            'fields.hidden.*' => ['required', 'string', 'max:120'],
             'reset' => ['nullable', 'boolean'],
         ]);
 
@@ -82,15 +85,17 @@ class ProjectIntegrations
 
         $tabs = app(\Leantime\Plugins\LeantimeLib\Services\TodoTabRegistry::class);
         $sections = app(\Leantime\Plugins\LeantimeLib\Services\TodoSectionRegistry::class);
+        $fields = app(TodoFieldRegistry::class);
         if (filter_var($input['reset'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
             $tabs->resetProjectLayout($projectId);
             $sections->resetProjectLayout($projectId);
+            $fields->resetProjectLayout($projectId);
             return response()->json(['saved' => true, 'reset' => true]);
         }
 
         $tabsSaved = $tabs->setProjectLayout($projectId, $input['tabs']['order'], $input['tabs']['visible']);
-        $sectionsSaved = $sections->setProjectLayout($projectId, $input['sections']['order'], $input['sections']['visible']);
-        if (! $tabsSaved || ! $sectionsSaved) {
+        $fieldsSaved = $fields->saveLayout($input['fields'], $projectId);
+        if (! $tabsSaved || ! $fieldsSaved) {
             return response()->json(['error' => 'The project To-do layout could not be saved.'], 500);
         }
         return response()->json(['saved' => true]);

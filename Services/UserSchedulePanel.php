@@ -9,11 +9,13 @@ class UserSchedulePanel
 {
     public static function renderTabHeader(): void
     {
+        if (! self::isEnabled()) return;
         echo '<li><a href="#workSchedule">Work schedule</a></li>';
     }
 
     public static function renderTabContent(): void
     {
+        if (! self::isEnabled()) return;
         $userId = (int) session('userdata.id', 0);
         if ($userId < 1) return;
         $rawSchedule = app(SettingService::class)->getSetting('usersettings.'.$userId.'.daySchedule', '');
@@ -36,5 +38,16 @@ class UserSchedulePanel
             echo '</select></div>';
         }
         echo '<button class="btn btn-primary" type="submit">Save work schedule</button></form></div>';
+    }
+
+    private static function isEnabled(): bool
+    {
+        $settings = app(SettingService::class);
+        $value = $settings->getSetting('leantimelib.ui.fastOnboarding', null);
+        if ($value === null || $value === false) {
+            return filter_var($settings->getSetting('leantimelib.ui.hideOnboardingSteps', '0'), FILTER_VALIDATE_BOOLEAN)
+                || filter_var($settings->getSetting('leantimelib.ui.disableStarterProject', '0'), FILTER_VALIDATE_BOOLEAN);
+        }
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
     }
 }

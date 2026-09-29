@@ -10,18 +10,22 @@ use Leantime\Core\Exceptions\ValidationException;
 use Leantime\Domain\Plugins\Permissions\PluginsPermissions;
 use Leantime\Domain\Setting\Services\Setting as SettingService;
 use Leantime\Plugins\LeantimeLib\Services\TodoSectionRegistry;
+use Leantime\Plugins\LeantimeLib\Services\TodoFieldRegistry;
 use Leantime\Plugins\LeantimeLib\Services\TodoTabRegistry;
+use Leantime\Plugins\LeantimeLib\Services\TodoLayoutEditor;
 
 class Settings extends Controller
 {
     private TodoTabRegistry $registry;
     private TodoSectionRegistry $sectionRegistry;
+    private TodoFieldRegistry $fieldRegistry;
     private SettingService $settings;
 
-    public function init(TodoTabRegistry $registry, TodoSectionRegistry $sectionRegistry, SettingService $settings): void
+    public function init(TodoTabRegistry $registry, TodoSectionRegistry $sectionRegistry, TodoFieldRegistry $fieldRegistry, SettingService $settings): void
     {
         $this->registry = $registry;
         $this->sectionRegistry = $sectionRegistry;
+        $this->fieldRegistry = $fieldRegistry;
         $this->settings = $settings;
     }
 
@@ -36,28 +40,27 @@ class Settings extends Controller
     #[RequiresPermission(PluginsPermissions::MANAGE, global: true)]
     public function post($params)
     {
-        $input = $this->incomingRequest->only(['tabOrder', 'sectionOrder', 'tabEnabled', 'sectionEnabled', 'hideExploreApps', 'hideOnboardingSteps', 'disableStarterProject', 'resetLayout']);
+        $input = $this->incomingRequest->only(['tabOrder', 'tabEnabled', 'fieldLayout', 'hideExploreApps', 'fastOnboarding', 'resetLayout']);
         try {
             $validated = ValidationException::validate($input, [
                 'tabOrder' => ['nullable', 'array'],
                 'tabOrder.*' => ['required', 'string', 'max:120'],
-                'sectionOrder' => ['nullable', 'array'],
-                'sectionOrder.*' => ['required', 'string', 'max:120'],
                 'tabEnabled' => ['nullable', 'array'],
                 'tabEnabled.*' => ['required', 'string', 'max:120'],
-                'sectionEnabled' => ['nullable', 'array'],
-                'sectionEnabled.*' => ['required', 'string', 'max:120'],
+                'fieldLayout' => ['nullable', 'array'],
+                'fieldLayout.main' => ['nullable', 'array'],
+                'fieldLayout.main.*' => ['required', 'string', 'max:120'],
+                'fieldLayout.sidebar' => ['nullable', 'array'],
+                'fieldLayout.sidebar.*' => ['required', 'string', 'max:120'],
+                'fieldLayout.parked' => ['nullable', 'array'],
+                'fieldLayout.parked.*' => ['required', 'string', 'max:120'],
                 'hideExploreApps' => ['nullable', 'boolean'],
-                'hideOnboardingSteps' => ['nullable', 'boolean'],
-                'disableStarterProject' => ['nullable', 'boolean'],
+                'fastOnboarding' => ['nullable', 'boolean'],
                 'resetLayout' => ['nullable', 'boolean'],
             ], [
                 'tabOrder.array' => 'The tab order was not submitted in the expected format.',
                 'tabOrder.*.string' => 'A tab identifier must be text.',
                 'tabOrder.*.max' => 'A tab identifier is too long.',
-                'sectionOrder.array' => 'The To-do section order was not submitted in the expected format.',
-                'sectionOrder.*.string' => 'A section identifier must be text.',
-                'sectionOrder.*.max' => 'A section identifier is too long.',
             ]);
         } catch (ValidationException $exception) {
             $errors = $exception->getErrorData();
@@ -75,10 +78,9 @@ class Settings extends Controller
 
         if (filter_var($validated['resetLayout'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
             $this->registry->resetLayout();
-            $this->sectionRegistry->resetLayout();
+            $this->fieldRegistry->resetLayout();
             $preferencesSaved = $this->settings->saveSetting('leantimelib.ui.hideExploreApps', filter_var($validated['hideExploreApps'] ?? false, FILTER_VALIDATE_BOOLEAN) ? '1' : '0')
-                && $this->settings->saveSetting('leantimelib.ui.hideOnboardingSteps', filter_var($validated['hideOnboardingSteps'] ?? false, FILTER_VALIDATE_BOOLEAN) ? '1' : '0')
-                && $this->settings->saveSetting('leantimelib.ui.disableStarterProject', filter_var($validated['disableStarterProject'] ?? false, FILTER_VALIDATE_BOOLEAN) ? '1' : '0');
+                && $this->settings->saveSetting('leantimelib.ui.fastOnboarding', filter_var($validated['fastOnboarding'] ?? false, FILTER_VALIDATE_BOOLEAN) ? '1' : '0');
             if (! $preferencesSaved) {
                 $this->assignPageData('The Library preferences could not be saved.');
                 return $this->tpl->display('leantimelib.settings');
@@ -89,20 +91,20 @@ class Settings extends Controller
         }
 
         $order = $validated['tabOrder'] ?? [];
-        $sectionOrder = $validated['sectionOrder'] ?? [];
         $failureLogged = false;
         try {
             $tabsSaved = is_array($order) && $this->registry->saveOrder($order);
-            $sectionsSaved = is_array($sectionOrder) && $this->sectionRegistry->saveOrder($sectionOrder);
             $tabsEnabledSaved = $this->registry->saveEnabled($validated['tabEnabled'] ?? []);
-            $sectionsEnabledSaved = $this->sectionRegistry->saveEnabled($validated['sectionEnabled'] ?? []);
+            $fieldLayoutSaved = $this->fieldRegistry->saveLayout([
+                'main' => $validated['fieldLayout']['main'] ?? [],
+                'sidebar' => $validated['fieldLayout']['sidebar'] ?? [],
+                'hidden' => $validated['fieldLayout']['parked'] ?? [],
+            ]);
             $hideExploreApps = filter_var($validated['hideExploreApps'] ?? false, FILTER_VALIDATE_BOOLEAN);
             $uiPreferenceSaved = $this->settings->saveSetting('leantimelib.ui.hideExploreApps', $hideExploreApps ? '1' : '0');
-            $hideOnboarding = filter_var($validated['hideOnboardingSteps'] ?? false, FILTER_VALIDATE_BOOLEAN);
-            $onboardingSaved = $this->settings->saveSetting('leantimelib.ui.hideOnboardingSteps', $hideOnboarding ? '1' : '0');
-            $disableStarterProject = filter_var($validated['disableStarterProject'] ?? false, FILTER_VALIDATE_BOOLEAN);
-            $starterProjectSaved = $this->settings->saveSetting('leantimelib.ui.disableStarterProject', $disableStarterProject ? '1' : '0');
-            $saved = $tabsSaved && $sectionsSaved && $tabsEnabledSaved && $sectionsEnabledSaved && $uiPreferenceSaved && $onboardingSaved && $starterProjectSaved;
+            $fastOnboarding = filter_var($validated['fastOnboarding'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $fastOnboardingSaved = $this->settings->saveSetting('leantimelib.ui.fastOnboarding', $fastOnboarding ? '1' : '0');
+            $saved = $tabsSaved && $tabsEnabledSaved && $fieldLayoutSaved && $uiPreferenceSaved && $fastOnboardingSaved;
         } catch (\Throwable $exception) {
             Log::error('Leantime Library could not save the To-do layout order.', [
                 'exception_class' => $exception::class,
@@ -129,18 +131,20 @@ class Settings extends Controller
     {
         $this->tpl->assign('tabs', $this->registry->getTabs(null, true));
         $this->tpl->assign('sections', $this->sectionRegistry->getSections(null, [], true));
+        $this->tpl->assign('todoLayoutEditor', app(TodoLayoutEditor::class)->renderGlobalControls(
+            $this->registry->getTabs(null, true),
+            $this->sectionRegistry->getSections(null, [], true)
+        ));
         $this->tpl->assign('hideExploreApps', filter_var(
             $this->settings->getSetting('leantimelib.ui.hideExploreApps', '0'),
             FILTER_VALIDATE_BOOLEAN
         ));
-        $this->tpl->assign('hideOnboardingSteps', filter_var(
-            $this->settings->getSetting('leantimelib.ui.hideOnboardingSteps', '0'),
-            FILTER_VALIDATE_BOOLEAN
-        ));
-        $this->tpl->assign('disableStarterProject', filter_var(
-            $this->settings->getSetting('leantimelib.ui.disableStarterProject', '0'),
-            FILTER_VALIDATE_BOOLEAN
-        ));
+        $fastOnboarding = $this->settings->getSetting('leantimelib.ui.fastOnboarding', null);
+        if ($fastOnboarding === null || $fastOnboarding === false) {
+            $fastOnboarding = filter_var($this->settings->getSetting('leantimelib.ui.hideOnboardingSteps', '0'), FILTER_VALIDATE_BOOLEAN)
+                || filter_var($this->settings->getSetting('leantimelib.ui.disableStarterProject', '0'), FILTER_VALIDATE_BOOLEAN);
+        }
+        $this->tpl->assign('fastOnboarding', filter_var($fastOnboarding, FILTER_VALIDATE_BOOLEAN));
         $this->tpl->assign('error', $error);
     }
 }

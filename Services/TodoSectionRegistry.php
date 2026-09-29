@@ -61,7 +61,7 @@ class TodoSectionRegistry
         }
 
         $normalized = [];
-        $seen = ['organization' => true, 'schedule' => true];
+        $seen = [];
         foreach ($sections as $index => $section) {
             if (! is_array($section)) {
                 Log::error('Leantime Library skipped a malformed To-do section contribution.', ['index' => $index]);
@@ -85,11 +85,6 @@ class TodoSectionRegistry
                 'render' => $render, 'builtin' => false,
             ];
         }
-
-        $normalized = array_merge([
-            ['id' => 'organization', 'label' => __('subtitles.organization'), 'icon' => 'fa fa-folder-open', 'order' => 0, 'render' => static fn () => '', 'builtin' => true],
-            ['id' => 'schedule', 'label' => __('subtitles.schedule'), 'icon' => 'fa fa-calendar', 'order' => 10, 'render' => static fn () => '', 'builtin' => true],
-        ], $normalized);
 
         $projectId = (int) (is_object($ticket) ? ($ticket->projectId ?? 0) : ($params['projectId'] ?? 0));
         $projectOrder = $projectId > 0 ? $this->readProjectOrder($projectId) : [];
