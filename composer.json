@@ -1,7 +1,7 @@
 {
   "name": "Leantime Library",
   "description": "Central contribution registry for Leantime plugins, including To-do modal layout and project integrations.",
-  "version": "0.13.1",
+  "version": "0.13.2",
   "homepage": "https://github.com/Correlander/leantime-lib",
   "authors": [
     {

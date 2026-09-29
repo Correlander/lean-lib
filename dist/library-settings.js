@@ -106,7 +106,7 @@
 
         workspace.querySelectorAll('[data-section-icon-button]').forEach(initializeIconPicker);
 
-        workspace.addEventListener('click', function (event) {
+        document.addEventListener('click', function (event) {
             if (event.target.closest('[data-icon-picker]')) return;
             workspace.querySelectorAll('[data-icon-picker-menu]:not([hidden])').forEach(function (menu) {
                 menu.hidden = true;
@@ -115,7 +115,7 @@
                 picker.querySelector('[data-section-icon-button]').setAttribute('aria-expanded', 'false');
             });
         });
-        workspace.addEventListener('scroll', function () {
+        window.addEventListener('scroll', function () {
             workspace.querySelectorAll('[data-icon-picker-menu]:not([hidden])').forEach(function (menu) {
                 menu.hidden = true;
                 menu.style.left = '';
@@ -312,6 +312,8 @@
             title.dataset.originalLabel = '';
             title.name = 'sidebarSections[' + id + '][label]';
             title.required = true;
+            const sectionEditor = document.createElement('div');
+            sectionEditor.className = 'lt-library-section-editor';
 
             const picker = document.createElement('div');
             picker.className = 'lt-library-icon-picker';
@@ -355,7 +357,8 @@
             placement.name = 'fieldLayout[sidebar][]';
             placement.value = id;
 
-            heading.append(caret, title, picker, iconInput, grip, park, placement);
+            sectionEditor.append(picker, iconInput, title);
+            heading.append(caret, sectionEditor, grip, park, placement);
             const children = document.createElement('ol');
             children.className = 'lt-library-zone';
             children.dataset.libraryZone = 'sidebar';
@@ -368,13 +371,13 @@
 
         let pointerStartedInControl = false;
         workspace.addEventListener('pointerdown', function (event) {
-            pointerStartedInControl = !!event.target.closest('button, input, [data-icon-picker-menu]');
+            pointerStartedInControl = !!event.target.closest('button:not(.lt-library-section-handle), input, [data-icon-picker-menu]');
         }, true);
         workspace.addEventListener('pointerup', function () {
             pointerStartedInControl = false;
         }, true);
         workspace.addEventListener('dragstart', function (event) {
-            if (pointerStartedInControl || event.target.closest('button, input, [data-icon-picker-menu]')) {
+            if (pointerStartedInControl || event.target.closest('button:not(.lt-library-section-handle), input, [data-icon-picker-menu]')) {
                 event.preventDefault();
                 return;
             }

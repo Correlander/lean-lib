@@ -57,7 +57,7 @@
                     </label>
                     {!! $todoLayoutEditor !!}
                 </section>
-                <p class="lt-library-autosave-status" data-autosave-status role="status" aria-live="polite">Changes save automatically.</p>
+                <p class="lt-library-autosave-status" data-autosave-status role="status" aria-live="polite">Ready.</p>
             </form>
         </div>
     </div>

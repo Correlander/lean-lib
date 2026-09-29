@@ -89,7 +89,7 @@ class TodoLayoutEditor
             if (! $tab['enabled']) $html .= $this->widget('tabs', $tab['id'], $tab['label'], $tab['icon'], 'parked', $tab['builtin'] ? 'Leantime tab' : 'Plugin tab', $global, $canEdit);
         }
         $html .= '</ol></aside></div></div>';
-        if ($global) $html .= '<p class="lt-library-workspace__hint">Changes save automatically. Projects use this layout unless they have a project override. Save controls stay fixed so a To-do can always be saved.</p>';
+        if ($global) $html .= '<p class="lt-library-workspace__hint">Projects use this layout unless they have a project override.</p>';
         if (! $global && $canEdit) $html .= '<div class="lt-library-layout-editor__actions"><button type="button" class="btn btn-primary" data-project-layout-save>Save project layout</button></div>';
         $html .= '</section>';
         if (! $global) $html .= '</div></section>';
@@ -107,13 +107,14 @@ class TodoLayoutEditor
         $label = $definition['label'];
         $parked = $zone === 'parked';
         $icon = trim((string) ($definition['icon'] ?? ''));
-        $html = '<section class="lt-library-preview-section" data-widget-kind="sectionHeader" data-widget-id="'.$this->e($id).'" data-section-preview="'.$this->e($id).'" data-section-zone="'.$zone.'" draggable="'.($canEdit ? 'true' : 'false').'"'.($parked ? ' data-parked-section="1"' : '').'><h3><i class="fa fa-angle-down" aria-hidden="true"></i> ';
+        $html = '<section class="lt-library-preview-section" data-widget-kind="sectionHeader" data-widget-id="'.$this->e($id).'" data-section-preview="'.$this->e($id).'" data-section-zone="'.$zone.'" draggable="'.($canEdit ? 'true' : 'false').'"'.($parked ? ' data-parked-section="1"' : '').'><h3><i class="fa fa-angle-down" aria-hidden="true"></i><div class="'.($global ? 'lt-library-section-editor' : 'lt-library-section-display').'">';
         if ($global) {
-            $html .= '<input class="lt-library-section-title" type="text" maxlength="80" required name="sidebarSections['.$this->e($id).'][label]" value="'.$this->e($label).'" data-section-label-input="'.$this->e($id).'" data-original-label="'.$this->e($label).'" aria-label="Section name">';
             $html .= $this->iconPicker($id, $icon);
+            $html .= '<input class="lt-library-section-title" type="text" maxlength="80" required name="sidebarSections['.$this->e($id).'][label]" value="'.$this->e($label).'" data-section-label-input="'.$this->e($id).'" data-original-label="'.$this->e($label).'" aria-label="Section name">';
         } else {
             $html .= '<i data-section-icon class="'.$this->e($icon).'" aria-hidden="true"'.($icon === '' ? ' hidden' : '').'></i><span data-section-title>'.$this->e($label).'</span>';
         }
+        $html .= '</div>';
         if ($canEdit) {
             $html .= '<button type="button" class="lt-library-section-handle" aria-hidden="true" tabindex="-1">⠿</button><button type="button" data-section-park="'.$this->e($id).'" title="'.($parked ? 'Restore ' : 'Park ').$this->e($label).' section">'.($parked ? '+' : '×').'</button>';
             if ($global && $parked) $html .= '<button type="button" class="lt-library-section-trash" data-section-delete="'.$this->e($id).'" title="Delete this section" aria-label="Delete '.$this->e($label).' section"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>';

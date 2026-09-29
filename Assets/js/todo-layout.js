@@ -167,6 +167,14 @@
                 sidebar.appendChild(group);
             }
             const summary = group.querySelector('summary');
+            let chevron = summary.querySelector('[data-leantimelib-group-chevron]');
+            if (!chevron) {
+                chevron = document.createElement('i');
+                chevron.className = 'fa fa-angle-down leantimelib-sidebar-group__chevron';
+                chevron.dataset.leantimelibGroupChevron = '';
+                chevron.setAttribute('aria-hidden', 'true');
+                summary.insertBefore(chevron, summary.firstChild);
+            }
             const icon = summary.querySelector('[data-leantimelib-group-icon]');
             icon.className = definition.icon || '';
             setLayoutHidden(icon, !definition.icon);
