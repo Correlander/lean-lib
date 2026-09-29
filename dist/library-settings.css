@@ -130,7 +130,6 @@
     gap: 1.5rem;
     margin: 0 0 1.6rem;
     padding-bottom: .9rem;
-    border-bottom: 1px solid var(--box-border-color, #d9d9d9);
 }
 
 .lt-library-page-heading__copy {
