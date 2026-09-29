@@ -38,7 +38,7 @@ The layout contract uses four visible zones plus **parked**: `tabs` for the moda
 
 ## Plugin contract
 
-The provider contribution types are `todo.tab` and `todo.detailSection`, exposed respectively through `leantime.plugins.leantimelib.todo.detail.tabs` and `leantime.plugins.leantimelib.todo.detail.sections`. Native To-do fields are registered as Library widgets, while plugins contribute tabs or sidebar sections with metadata and a content renderer. Provider plugins do not modify Leantime templates or call another plugin's UI code. The Library owns collection, validation, visibility, ordering, rendering, and saved layouts. It uses Leantime's native modal events and a Library browser adapter without changing Leantime core files.
+The currently supported To-do contribution types are `todo.tab` and `todo.detailSection`, exposed respectively through `leantime.plugins.leantimelib.todo.detail.tabs` and `leantime.plugins.leantimelib.todo.detail.sections`. A provider can add a complete tab panel or one inline sidebar section; it cannot yet register arbitrary individual form fields or a widget in the below-save area. Native To-do fields are registered separately as Library widgets. The Library owns collection, validation, visibility, ordering, placement, and saved layouts, while each provider owns its contribution's content and behavior. Provider plugins use the Library contract rather than editing Leantime templates or calling another plugin's UI code. The Library uses Leantime's native modal events and a browser adapter without changing Leantime core files.
 
 ### To-do inline sections
 

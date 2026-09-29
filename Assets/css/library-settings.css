@@ -326,6 +326,10 @@
     box-shadow: none;
 }
 
+.lt-library-ticket__auxiliary .lt-library-zone > .lt-library-widget:first-child {
+    border-top: 0;
+}
+
 .lt-library-ticket__auxiliary .lt-library-widget__mock {
     grid-column: 2 / 4;
     white-space: normal;

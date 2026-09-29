@@ -124,13 +124,13 @@ class TodoLayoutEditor
         $html .= '<span class="lt-library-widget__label">'.$this->e($label).'</span>';
         if ($kind === 'fields') {
             $examples = [
-                'headline' => 'Shop Tokens - Beta', 'status' => 'Selected for work', 'priority' => 'Low',
-                'effort' => 'Effort not defined', 'editor' => 'Example User', 'collaborators' => 'Filter by user',
-                'dueDate' => '10/29/2026  11:59 PM', 'tags' => 'add a tag', 'description' => 'Design basic shop tokens. Optional is making the shop menu.',
-                'subtasks' => '+ Add Task', 'discussion' => 'Add a new comment', 'type' => 'Task',
-                'project' => 'PickWitch', 'milestone' => 'Art Designs', 'sprint' => 'Backlog',
-                'related' => 'Not related to any other To-Dos', 'workStart' => 'm/d/Y  --:--',
-                'workEnd' => 'm/d/Y  --:--', 'plannedHours' => '0  /  0',
+                'headline' => 'To-do title', 'status' => 'Choose a status', 'priority' => 'Choose a priority',
+                'effort' => 'Set effort', 'editor' => 'Assign a user', 'collaborators' => 'Add collaborators',
+                'dueDate' => 'Choose a due date', 'tags' => 'Add tags', 'description' => 'Describe the work to be done…',
+                'subtasks' => 'Add a subtask', 'discussion' => 'Write a comment', 'type' => 'Choose a type',
+                'project' => 'Choose a project', 'milestone' => 'Choose a milestone', 'sprint' => 'Choose a sprint',
+                'related' => 'Choose a related To-do', 'workStart' => 'Choose a work start date',
+                'workEnd' => 'Choose a work end date', 'plannedHours' => 'Planned hours / hours left',
             ];
             $html .= '<span class="lt-library-widget__mock">'.$this->e($examples[$id] ?? '').'</span>';
         } else {
