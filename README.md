@@ -6,6 +6,8 @@ Leantime Library owns the To-do modal layout. It combines Leantime’s native ta
 
 Install this project so the manifest is at `app/Plugins/LeantimeLib/composer.json` (the plugin directory must be named exactly `LeantimeLib`). Leantime discovers each direct child folder of `app/Plugins/` that contains a valid `composer.json`; placing this repository folder one level too high or using the repository folder name will prevent discovery. Enable it in **My Apps**. The settings page is available from the plugin controls.
 
+When updating an existing install, copy the updated plugin folder contents, including `dist/todo-layout.js` and `dist/mix-manifest.json`. The manifest keeps the asset at the stable `dist/todo-layout.js` file path and adds a version query for browser cache busting; copying only `composer.json` or `register.php` will leave the modal adapter outdated.
+
 ## Current integration
 
 Leantime 3.10.0 exposes `ticketTabs` and `ticketTabsContent` events from the To-do detail modal. The Library listens to those supported hooks and aggregates contributions from enabled plugins with the filter key:
