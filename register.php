@@ -6,21 +6,21 @@ use Leantime\Plugins\LeantimeLib\Services\TodoSectionRegistry;
 use Leantime\Plugins\LeantimeLib\Services\TodoTabRegistry;
 
 $registration = app()->makeWith(Registration::class, ['pluginId' => 'LeantimeLib']);
-$registration->addFooterJs(['library-settings.js', 'project-integrations.js']);
+$registration->addFooterJs(['library-settings.js', 'project-integrations.js', 'todo-layout.js']);
 $registration->addCss(['library-settings.css', 'project-integrations.css']);
 
 EventDispatcher::add_event_listener(
-    'leantime.domain.tickets.templates.showTicketModal.ticketTabs',
+    'leantime.domain.tickets.templates.*.ticketTabs',
     [TodoTabRegistry::class, 'renderTabHeaders']
 );
 
 
 EventDispatcher::add_event_listener(
-    'leantime.domain.tickets.templates.showTicketModal.ticketTabsContent',
+    'leantime.domain.tickets.templates.*.ticketTabsContent',
     [TodoTabRegistry::class, 'renderTabPanels']
 );
 
 EventDispatcher::add_event_listener(
-    'leantime.domain.tickets.templates.showTicketModal.beforeEndRightColumn',
+    'leantime.domain.tickets.templates.*.beforeEndRightColumn',
     [TodoSectionRegistry::class, 'renderSections']
 );

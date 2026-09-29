@@ -34,3 +34,21 @@
     display: flex;
     gap: .35rem;
 }
+
+.lt-library-sortable__status,
+.lt-library-sortable__toggle {
+    color: var(--secondary-text-color, #777);
+    font-size: .9em;
+    white-space: nowrap;
+}
+
+.lt-library-sortable__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    cursor: pointer;
+}
+
+.lt-library-sortable__toggle input {
+    margin: 0;
+}

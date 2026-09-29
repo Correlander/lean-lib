@@ -1,6 +1,6 @@
 # Leantime Library
 
-Leantime Library is a registry that lets enabled plugins contribute tabs and inline sections to the To-do detail modal and gives administrators one place to set their order.
+Leantime Library owns the To-do modal layout. It combines Leantime’s native tabs and sidebar sections with enabled-plugin contributions, then lets administrators order all of them and hide plugin contributions from one settings page.
 
 ## Install
 
@@ -28,17 +28,17 @@ EventDispatcher::add_filter_listener('leantime.plugins.leantimelib.todo.detail.t
 });
 ```
 
-The `render` callback owns its panel content. Return trusted HTML from the contributing plugin's view renderer; the Library escapes tab IDs, labels, and icon classes, and wraps each panel in the matching tab target. `$params['ticket']` is the current ticket model when rendering tabs, and `null` when the contribution list is shown in Library settings. Register contributions regardless of the current ticket so the settings list remains stable.
+The `render` callback owns only the panel content. Return trusted HTML from the contributing plugin's view renderer; the Library validates IDs and metadata, renders panel content, and handles the modal layout. `$params['ticket']` is the current ticket model when rendering tabs, and `null` when the contribution list is shown in Library settings. Register contributions regardless of the current ticket so the settings list remains stable.
 
-Contributed tabs are ordered by their saved Library preference. New tabs not yet in that preference are appended by their declared `order`, then ID. Leantime's built-in Details, Files, and Time Tracking tabs remain in their native positions; the tab adapter orders plugin-contributed tabs only.
+The Library settings page orders the native Details, Files, and Time Tracking tabs together with plugin-contributed tabs. Administrators can also hide plugin tabs there. The saved order is applied to Leantime's native modal after its contents load.
 
 ## Plugin contract
 
-`leantime.plugins.leantimelib.todo.detail.tabs` is the first contribution point. Contributors append metadata; they do not patch Leantime templates or call another plugin's UI code directly. The Library owns collection, validation, ordering, and rendering into the native tab events. Future placements should get separate, target-specific filter keys and Leantime hook adapters rather than a generic nested UI schema.
+`leantime.plugins.leantimelib.todo.detail.tabs` is a contribution point. Provider plugins append metadata and a content renderer; they do not inject content into Leantime templates or call another plugin's UI code. The Library owns collection, validation, visibility, ordering, rendering, and the saved layout. It uses Leantime's native modal tab events and a Library-owned browser adapter to apply the administrator's layout without changing Leantime core files.
 
 ### To-do inline sections
 
-Plugins can also contribute an inline section using `leantime.plugins.leantimelib.todo.detail.sections`. The Library orders and renders these contributions at Leantime 3.10.0's native `beforeEndRightColumn` hook, which is after the built-in Schedule section. The Library settings page orders tabs and inline sections in separate lists because they occupy different native UI regions. Leantime's built-in Organization and Schedule sections cannot be moved by this hook and remain in their native positions.
+Plugins can also contribute an inline section using `leantime.plugins.leantimelib.todo.detail.sections`. The Library collects these contributions at Leantime 3.10.0's native `beforeEndRightColumn` event. Its browser adapter then orders them alongside Leantime's native Organization and Schedule sections according to the Library setting. Administrators can hide individual plugin sections there; core sections remain enabled.
 
 ```php
 EventDispatcher::add_filter_listener('leantime.plugins.leantimelib.todo.detail.sections', function (array $sections, array $params): array {
