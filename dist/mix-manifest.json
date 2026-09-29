@@ -3,10 +3,10 @@
   "library-settings.js": "/library-settings.js",
   "/library-settings.css": "/library-settings.css",
   "library-settings.css": "/library-settings.css",
-  "/project-integrations.js": "/project-integrations.js",
-  "project-integrations.js": "/project-integrations.js",
-  "/project-integrations.css": "/project-integrations.css",
-  "project-integrations.css": "/project-integrations.css",
-  "/todo-layout.js": "/todo-layout.js?v=0.4.6",
-  "todo-layout.js": "/todo-layout.js?v=0.4.6"
+  "/project-integrations.js": "/project-integrations.js?v=0.4.7",
+  "project-integrations.js": "/project-integrations.js?v=0.4.7",
+  "/project-integrations.css": "/project-integrations.css?v=0.4.7",
+  "project-integrations.css": "/project-integrations.css?v=0.4.7",
+  "/todo-layout.js": "/todo-layout.js?v=0.4.7",
+  "todo-layout.js": "/todo-layout.js?v=0.4.7"
 }

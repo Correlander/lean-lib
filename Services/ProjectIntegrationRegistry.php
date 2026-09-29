@@ -11,8 +11,11 @@ class ProjectIntegrationRegistry
 {
     public const FILTER = 'leantime.plugins.leantimelib.project.integrations.panels';
 
-    public function renderPanels(int $projectId): string
+    public function __construct(private TodoSectionRegistry $todoSections) {}
+
+    public function renderPanels(int $projectId, bool $canEdit): string
     {
+        $html = $this->todoSections->renderProjectVisibilityControls($projectId, $canEdit);
         $panels = EventDispatcher::dispatch_filter(
             'plugins.leantimelib.project.integrations.panels',
             [],
@@ -21,10 +24,9 @@ class ProjectIntegrationRegistry
         );
         if (! is_array($panels)) {
             Log::error('Leantime Library received an invalid project integration panel list.');
-            return '<p>No plugins have registered project integrations.</p>';
+            return $html.'<p>No plugins have registered project integrations.</p>';
         }
 
-        $html = '';
         $seen = [];
         foreach ($panels as $index => $panel) {
             if (! is_array($panel)) {
@@ -63,6 +65,6 @@ class ProjectIntegrationRegistry
             }
         }
 
-        return $html !== '' ? $html : '<p>No enabled plugins have registered project integrations yet.</p>';
+        return $html;
     }
 }

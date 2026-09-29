@@ -9,3 +9,9 @@
 .leantimelib-integrations-heading { margin: 0 0 1.25rem; padding-bottom: .75rem; border-bottom: 1px solid var(--box-border-color, #d9d9d9); }
 .leantimelib-integrations-heading h3 { margin: 0 0 .25rem; }
 .leantimelib-integrations-heading p { margin: 0; color: var(--secondary-text-color, #777); }
+.leantimelib-project-todo-visibility { margin: 1rem 0 1.5rem; padding: 1rem; border: 1px solid var(--box-border-color, #d9d9d9); border-radius: .25rem; }
+.leantimelib-project-todo-visibility h3 { margin-top: 0; }
+.leantimelib-project-todo-visibility__row { display: flex; align-items: center; gap: .75rem; padding: .45rem 0; border-top: 1px solid var(--box-border-color, #e5e5e5); }
+.leantimelib-project-todo-visibility__row label { flex: 1; margin: 0; }
+.leantimelib-project-todo-visibility__row [data-section-status] { color: var(--secondary-text-color, #777); font-size: .9em; }
+.leantimelib-project-todo-visibility__status { min-height: 1.3em; margin: .5rem 0 0; }

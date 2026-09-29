@@ -46,6 +46,65 @@
             });
     }
 
+    async function saveVisibility(control, sectionId, payload, previousEnabled) {
+        const status = control.querySelector('[data-visibility-status]');
+        const row = control.querySelector('[data-section-row="' + CSS.escape(sectionId) + '"]');
+        const checkbox = row && row.querySelector('[data-section-toggle]');
+        const reset = row && row.querySelector('[data-section-reset]');
+        if (status) status.textContent = 'Saving…';
+        if (checkbox) checkbox.disabled = true;
+        if (reset) reset.disabled = true;
+        try {
+            const response = await fetch(control.dataset.endpoint, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': control.dataset.csrf || ''
+                },
+                body: JSON.stringify(Object.assign({ sectionId: sectionId }, payload))
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || result.message || 'Could not save this project override.');
+            if (checkbox) {
+                checkbox.checked = !!result.enabled;
+                checkbox.disabled = false;
+                checkbox.dataset.savedEnabled = result.enabled ? '1' : '0';
+            }
+            if (reset) {
+                reset.disabled = !result.overridden;
+            }
+            const rowStatus = row && row.querySelector('[data-section-status]');
+            if (rowStatus) rowStatus.textContent = result.overridden ? 'Project override' : 'Using Library default';
+            if (status) status.textContent = 'To-do visibility saved.';
+        } catch (error) {
+            if (status) status.textContent = error.message;
+            if (checkbox) {
+                if (typeof previousEnabled === 'boolean') checkbox.checked = previousEnabled;
+                checkbox.disabled = false;
+            }
+            if (reset) reset.disabled = false;
+            console.error('[LeantimeLib project visibility]', error);
+        }
+    }
+
+    document.addEventListener('change', function (event) {
+        const checkbox = event.target.closest('[data-section-toggle]');
+        if (!checkbox) return;
+        const control = checkbox.closest('[data-leantimelib-visibility]');
+        const previousEnabled = checkbox.dataset.savedEnabled === '1';
+        if (control) saveVisibility(control, checkbox.dataset.sectionToggle, { enabled: checkbox.checked }, previousEnabled);
+    });
+
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-section-reset]');
+        if (!button) return;
+        const control = button.closest('[data-leantimelib-visibility]');
+        if (control) saveVisibility(control, button.dataset.sectionReset, { useDefault: true });
+    });
+
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
     else start();
 })();

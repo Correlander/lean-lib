@@ -74,6 +74,8 @@ EventDispatcher::add_filter_listener('leantime.plugins.leantimelib.project.integ
 
 `render` must return trusted HTML for the given project ID. Keep credentials in the provider plugin, validate each request there, and escape user/provider values in its view. This is the first panel contract and is intentionally limited to project integrations.
 
+The Library places a **To-do section visibility** control above the provider panels. It lists every section contributed by an enabled plugin. The initial state inherits that section's Library-wide default; changing a checkbox stores a project-specific override, and **Use default** removes that override. Visibility overrides are saved through Leantime's `projectsettings.{projectId}.*` setting namespace and affect only that project's To-do modals; they do not hide or disable the provider's project settings panel.
+
 ## Leantime App menu
 
 Leantime's Apps sidebar item is supplied through the `menuStructures.company.administration` filter. A plugin can change that menu link to `/plugins/myapps` without overwriting core files. That only changes the sidebar entry; the Explore Apps tab and direct `/plugins/marketplace` route remain available.

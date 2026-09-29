@@ -14,6 +14,8 @@ class TodoSectionRegistry
 
     private const ORDER_SETTING = 'leantimelib.todo.detail.sectionOrder';
     private const DISABLED_SETTING = 'leantimelib.todo.detail.disabledSections';
+    private const PROJECT_OVERRIDES_PREFIX = 'projectsettings.';
+    private const PROJECT_OVERRIDES_SUFFIX = '.leantimelib.todo.detail.sectionOverrides';
 
     public function __construct(private SettingService $settings) {}
 
@@ -97,10 +99,83 @@ class TodoSectionRegistry
         });
 
         $disabled = $this->readDisabledIds();
-        foreach ($normalized as &$section) $section['enabled'] = $section['builtin'] || ! in_array($section['id'], $disabled, true);
+        $projectId = (int) (is_object($ticket) ? ($ticket->projectId ?? 0) : ($params['projectId'] ?? 0));
+        $overrides = $projectId > 0 ? $this->readProjectOverrides($projectId) : [];
+        foreach ($normalized as &$section) {
+            $section['defaultEnabled'] = $section['builtin'] || ! in_array($section['id'], $disabled, true);
+            $section['overridden'] = ! $section['builtin'] && array_key_exists($section['id'], $overrides);
+            $section['enabled'] = $section['builtin']
+                || ($section['overridden'] ? $overrides[$section['id']] : $section['defaultEnabled']);
+        }
         unset($section);
         if (! $includeDisabled) $normalized = array_values(array_filter($normalized, static fn (array $section): bool => $section['enabled']));
         return $normalized;
+    }
+
+    /** Render per-project controls for plugin sections; global Library defaults are inherited until changed. */
+    public function renderProjectVisibilityControls(int $projectId, bool $canEdit): string
+    {
+        $sections = array_values(array_filter(
+            $this->getSections(null, ['projectId' => $projectId], true),
+            static fn (array $section): bool => ! $section['builtin']
+        ));
+        $endpoint = htmlspecialchars(rtrim(BASE_URL, '/').'/LeantimeLib/projectIntegrations/'.$projectId.'/section-visibility', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $csrf = htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $html = '<section class="leantimelib-project-todo-visibility" data-leantimelib-visibility data-endpoint="'.$endpoint.'" data-csrf="'.$csrf.'">';
+        $html .= '<h3>To-do section visibility</h3>';
+        $html .= '<p>These settings control plugin sections in this project’s To-do modals. By default, projects use the visibility set in Leantime Library settings.</p>';
+        if ($sections === []) {
+            $html .= '<p>No enabled plugins have contributed To-do sections.</p>';
+        } else {
+            foreach ($sections as $section) {
+                $id = htmlspecialchars($section['id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                $label = htmlspecialchars($section['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                $checked = $section['enabled'] ? ' checked' : '';
+                $disabled = $canEdit ? '' : ' disabled';
+                $status = $section['overridden'] ? 'Project override' : 'Using Library default';
+                $status = htmlspecialchars($status, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                $resetDisabled = (! $canEdit || ! $section['overridden']) ? ' disabled' : '';
+                $html .= '<div class="leantimelib-project-todo-visibility__row" data-section-row="'.$id.'">';
+                $html .= '<label><input type="checkbox" data-section-toggle="'.$id.'"'.$checked.$disabled.'> Show '.$label.' in this project’s To-do modals</label>';
+                $html .= '<span data-section-status>'.$status.'</span>';
+                if ($canEdit) $html .= '<button type="button" class="btn btn-default" data-section-reset="'.$id.'"'.$resetDisabled.'>Use default</button>';
+                $html .= '</div>';
+            }
+        }
+        $html .= '<p class="leantimelib-project-todo-visibility__status" data-visibility-status role="status"></p></section>';
+        return $html;
+    }
+
+    /** @return array{enabled:bool,defaultEnabled:bool,overridden:bool}|null */
+    public function setProjectSectionVisibility(int $projectId, string $sectionId, ?bool $enabled): ?array
+    {
+        $available = array_column($this->getSections(null, [], true), null, 'id');
+        $section = $available[$sectionId] ?? null;
+        if ($projectId < 1 || ! is_array($section) || $section['builtin']) return null;
+
+        $overrides = $this->readProjectOverrides($projectId);
+        if ($enabled === null || $enabled === $section['defaultEnabled']) {
+            unset($overrides[$sectionId]);
+        } else {
+            $overrides[$sectionId] = $enabled;
+        }
+        $key = self::PROJECT_OVERRIDES_PREFIX.$projectId.self::PROJECT_OVERRIDES_SUFFIX;
+        if (! $this->settings->saveSetting($key, json_encode($overrides, JSON_THROW_ON_ERROR))) {
+            throw new RuntimeException('The project To-do section override could not be saved.');
+        }
+
+        $isOverridden = array_key_exists($sectionId, $overrides);
+        $effectiveEnabled = $isOverridden ? $overrides[$sectionId] : $section['defaultEnabled'];
+        return ['enabled' => $effectiveEnabled, 'defaultEnabled' => $section['defaultEnabled'], 'overridden' => $isOverridden];
+    }
+
+    private function readProjectOverrides(int $projectId): array
+    {
+        $value = $this->settings->getSetting(self::PROJECT_OVERRIDES_PREFIX.$projectId.self::PROJECT_OVERRIDES_SUFFIX, '{}');
+        if (! is_string($value)) return [];
+        $overrides = json_decode($value, true);
+        if (! is_array($overrides)) return [];
+        return array_filter($overrides, static fn ($enabled, $id): bool => is_string($id) && is_bool($enabled), ARRAY_FILTER_USE_BOTH);
     }
 
     public function saveOrder(array $requestedOrder): bool
