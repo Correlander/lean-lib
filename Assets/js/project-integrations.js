@@ -90,6 +90,39 @@
         }
     }
 
+    function getLaneState(group) {
+        const visible = group.querySelector('[data-library-lane="visible"]');
+        const hidden = group.querySelector('[data-library-lane="hidden"]');
+        const order = Array.from(visible.querySelectorAll('[data-widget-id]')).map((item) => item.dataset.widgetId)
+            .concat(Array.from(hidden.querySelectorAll('[data-widget-id]')).map((item) => item.dataset.widgetId));
+        return { order: order, visible: Array.from(visible.querySelectorAll('[data-widget-id]')).map((item) => item.dataset.widgetId) };
+    }
+
+    async function saveProjectLayout(control, reset) {
+        const status = control.querySelector('[data-project-layout-status]');
+        const buttons = control.querySelectorAll('[data-project-layout-save], [data-project-layout-reset]');
+        buttons.forEach((button) => { button.disabled = true; });
+        if (status) status.textContent = reset ? 'Restoring Library defaults…' : 'Saving project layout…';
+        try {
+            const tabs = getLaneState(control.querySelector('[data-layout-kind="tabs"]'));
+            const sections = getLaneState(control.querySelector('[data-layout-kind="sections"]'));
+            const response = await fetch(control.dataset.endpoint, {
+                method: 'POST', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': control.dataset.csrf || '' },
+                body: JSON.stringify({ tabs: tabs, sections: sections, reset: !!reset })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || result.message || 'Could not save this project layout.');
+            if (reset) window.location.reload();
+            else if (status) status.textContent = 'Project To-do layout saved.';
+        } catch (error) {
+            if (status) status.textContent = error.message;
+            console.error('[LeantimeLib project layout]', error);
+        } finally {
+            buttons.forEach((button) => { button.disabled = false; });
+        }
+    }
+
     document.addEventListener('change', function (event) {
         const checkbox = event.target.closest('[data-section-toggle]');
         if (!checkbox) return;
@@ -100,9 +133,16 @@
 
     document.addEventListener('click', function (event) {
         const button = event.target.closest('[data-section-reset]');
-        if (!button) return;
-        const control = button.closest('[data-leantimelib-visibility]');
-        if (control) saveVisibility(control, button.dataset.sectionReset, { useDefault: true });
+        if (button) {
+            const control = button.closest('[data-leantimelib-visibility]');
+            if (control) saveVisibility(control, button.dataset.sectionReset, { useDefault: true });
+        }
+
+        const save = event.target.closest('[data-project-layout-save]');
+        if (save) saveProjectLayout(save.closest('[data-project-layout]'), false);
+
+        const resetLayout = event.target.closest('[data-project-layout-reset]');
+        if (resetLayout) saveProjectLayout(resetLayout.closest('[data-project-layout]'), true);
     });
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });

@@ -52,3 +52,79 @@
 .lt-library-sortable__toggle input {
     margin: 0;
 }
+
+.lt-library-layout-editor {
+    margin: 1.5rem 0 2rem;
+    padding: 1rem;
+    border: 1px solid var(--box-border-color, #d9d9d9);
+    border-radius: 8px;
+    background: var(--box-background, #fff);
+}
+
+.lt-library-layout-editor__columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.lt-library-layout-editor__columns h4 {
+    margin: .5rem 0;
+}
+
+.lt-library-layout-editor__lane {
+    min-height: 6rem;
+    margin: 0;
+    padding: .5rem;
+    list-style: none;
+    border: 2px dashed var(--box-border-color, #c7cbd1);
+    border-radius: 6px;
+    background: var(--main-background-color, #f7f8fa);
+}
+
+.lt-library-layout-editor__lane:empty::after {
+    display: block;
+    padding: 1rem;
+    color: var(--secondary-text-color, #777);
+    content: 'Drop widgets here';
+    text-align: center;
+}
+
+.lt-library-layout-editor__item {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    margin: .35rem 0;
+    padding: .7rem .8rem;
+    border: 1px solid var(--box-border-color, #d9d9d9);
+    border-radius: 6px;
+    background: var(--box-background, #fff);
+    cursor: grab;
+}
+
+.lt-library-layout-editor__item.is-dragging {
+    opacity: .45;
+}
+
+.lt-library-layout-editor__item > span:nth-last-of-type(1) {
+    flex: 1;
+    font-weight: 600;
+}
+
+.lt-library-layout-editor__item small,
+.lt-library-layout-editor__grip {
+    color: var(--secondary-text-color, #777);
+    white-space: nowrap;
+}
+
+.leantimelib-compact-onboarding-note {
+    margin-bottom: 1rem;
+    padding: .8rem 1rem;
+    border-left: 3px solid var(--main-action-color, #2684ff);
+    background: var(--box-background, #fff);
+}
+
+@media (max-width: 760px) {
+    .lt-library-layout-editor__columns {
+        grid-template-columns: 1fr;
+    }
+}

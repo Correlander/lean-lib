@@ -32,11 +32,11 @@ EventDispatcher::add_filter_listener('leantime.plugins.leantimelib.todo.detail.t
 
 The `render` callback owns only the panel content. Return trusted HTML from the contributing plugin's view renderer; the Library validates IDs and metadata, renders panel content, and handles the modal layout. `$params['ticket']` is the current ticket model when rendering tabs, and `null` when the contribution list is shown in Library settings. Register contributions regardless of the current ticket so the settings list remains stable.
 
-The Library settings page orders the native Details, Files, and Time Tracking tabs together with plugin-contributed tabs. Administrators can also hide plugin tabs there. The saved order is applied to Leantime's native modal after its contents load.
+The Library settings page is a drag-and-drop editor for the modal's top-level tabs (Details, Files, Time Tracking, and plugin tabs) and Details sidebar sections (Organization, Schedule, and plugin sections). Each group has visible and hidden drop areas. Native components can be hidden too, except that one top-level tab must remain visible. A project inherits the instance layout until someone saves a project-specific override in **Project Settings → Integrations**; **Use Library defaults** clears that override. The saved layout is applied to Leantime's native modal after its contents load.
 
 ## Plugin contract
 
-`leantime.plugins.leantimelib.todo.detail.tabs` is a contribution point. Provider plugins append metadata and a content renderer; they do not inject content into Leantime templates or call another plugin's UI code. The Library owns collection, validation, visibility, ordering, rendering, and the saved layout. It uses Leantime's native modal tab events and a Library-owned browser adapter to apply the administrator's layout without changing Leantime core files.
+The component types currently supported are `todo.tab` and `todo.detailSection`, exposed respectively through `leantime.plugins.leantimelib.todo.detail.tabs` and `leantime.plugins.leantimelib.todo.detail.sections`. Provider plugins append metadata and a content renderer; they do not inject content into Leantime templates or call another plugin's UI code. The Library owns collection, validation, visibility, ordering, rendering, and the saved layout. It uses Leantime's native modal events and a Library-owned browser adapter to arrange the modal without changing Leantime core files. Leantime 3.10.0 does not expose individual native form fields inside the Details tab as movable plugin components; those remain inside their native tab.
 
 ### To-do inline sections
 
@@ -78,7 +78,7 @@ The Library places a **To-do section visibility** control above the provider pan
 
 ## Leantime App menu
 
-The Library settings page has an optional **Hide Explore Apps and make My Apps the only Apps tab and destination** setting. When enabled, a supported `menuStructures.company` filter sends the Apps sidebar item to `/plugins/myapps`; a Library browser adapter hides the Explore Apps tab in Leantime's shared Apps navigation and redirects direct `/plugins/marketplace` visits to `/plugins/myapps`. No Leantime core files are changed. Turn the option off to restore the normal marketplace link, tab, and route behavior.
+The Library settings page has an optional **Hide Explore Apps and make My Apps the only Apps tab and destination** setting. When enabled, a supported `menuStructures.company` filter sends the Apps sidebar item to `/plugins/myapps`; a Library browser adapter hides the Explore Apps tab in Leantime's shared Apps navigation and redirects direct `/plugins/marketplace` visits to `/plugins/myapps`. It also offers compact invite onboarding, which keeps account setup and applies the invite's saved defaults for appearance and schedule. The Library adds a self-service **Work schedule** tab under **Profile settings** so users can adjust the schedule later. The starter-project option suppresses Leantime's generated starter project and sample content. For that, Leantime 3.10.0 has no cancellation hook around the Help service, so the Library uses a narrow request-scoped service binding; all other Help behavior remains intact. No Leantime core files are changed.
 
 ## License
 

@@ -1,46 +1,79 @@
 (function () {
     'use strict';
 
-    function installSortableList(list) {
+    function installLayoutEditor(editor) {
         let dragged = null;
 
-        list.addEventListener('dragstart', function (event) {
-            const item = event.target.closest('[data-order-id]');
+        editor.addEventListener('dragstart', function (event) {
+            const item = event.target.closest('[data-widget-id]');
             if (!item) return;
             dragged = item;
             item.classList.add('is-dragging');
             event.dataTransfer.effectAllowed = 'move';
-            event.dataTransfer.setData('text/plain', item.dataset.orderId);
+            event.dataTransfer.setData('text/plain', item.dataset.widgetId);
         });
 
-        list.addEventListener('dragend', function () {
+        editor.addEventListener('dragend', function () {
             if (dragged) dragged.classList.remove('is-dragging');
             dragged = null;
         });
 
-        list.addEventListener('dragover', function (event) {
+        editor.addEventListener('dragover', function (event) {
             event.preventDefault();
             if (!dragged) return;
 
-            const target = event.target.closest('[data-order-id]');
-            if (!target || target === dragged) return;
+            const lane = event.target.closest('[data-library-lane]');
+            if (!lane || !editor.contains(lane)) return;
+            const target = event.target.closest('[data-widget-id]');
+            if (!target || target === dragged) {
+                lane.appendChild(dragged);
+                return;
+            }
 
             const bounds = target.getBoundingClientRect();
-            const after = event.clientY > bounds.top + bounds.height / 2;
-            list.insertBefore(dragged, after ? target.nextSibling : target);
+            const vertical = lane.dataset.libraryLane === 'visible' || lane.dataset.libraryLane === 'hidden';
+            const after = vertical
+                ? event.clientY > bounds.top + bounds.height / 2
+                : event.clientX > bounds.left + bounds.width / 2;
+            lane.insertBefore(dragged, after ? target.nextSibling : target);
         });
 
-        list.addEventListener('click', function (event) {
-            const button = event.target.closest('[data-move]');
+        editor.addEventListener('click', function (event) {
+            const button = event.target.closest('[data-widget-hide], [data-widget-show]');
             if (!button) return;
-            const item = button.closest('[data-order-id]');
-            if (button.dataset.move === 'up' && item.previousElementSibling) {
-                list.insertBefore(item, item.previousElementSibling);
-            } else if (button.dataset.move === 'down' && item.nextElementSibling) {
-                list.insertBefore(item.nextElementSibling, item);
-            }
+            const item = button.closest('[data-widget-id]');
+            const laneName = button.hasAttribute('data-widget-hide') ? 'hidden' : 'visible';
+            const lane = editor.querySelector('[data-library-lane="' + laneName + '"]');
+            if (item && lane) lane.appendChild(item);
+        });
+
+        editor.addEventListener('drop', function (event) { event.preventDefault(); });
+
+        const form = editor.closest('form');
+        if (form) form.addEventListener('submit', function () {
+            editor.querySelectorAll('[data-widget-enabled]').forEach(function (input) {
+                input.disabled = input.closest('[data-library-lane]').dataset.libraryLane !== 'visible';
+            });
         });
     }
 
-    document.querySelectorAll('[data-library-sortable]').forEach(installSortableList);
+    function scan(root) {
+        if (root.matches && root.matches('[data-library-layout-editor]')) installLayoutEditor(root);
+        if (root.querySelectorAll) root.querySelectorAll('[data-library-layout-editor]').forEach(installLayoutEditor);
+    }
+
+    function start() {
+        scan(document);
+        if (!window.MutationObserver || !document.body) return;
+        new MutationObserver(function (records) {
+            records.forEach(function (record) {
+                record.addedNodes.forEach(function (node) {
+                    if (node.nodeType === 1) scan(node);
+                });
+            });
+        }).observe(document.body, { childList: true, subtree: true });
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+    else start();
 })();

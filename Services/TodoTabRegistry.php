@@ -14,6 +14,7 @@ class TodoTabRegistry
 
     private const ORDER_SETTING = 'leantimelib.todo.detail.tabOrder';
     private const DISABLED_SETTING = 'leantimelib.todo.detail.disabledTabs';
+    private const PROJECT_LAYOUT_SUFFIX = '.leantimelib.todo.detail.tabLayout';
 
     public function __construct(private SettingService $settings) {}
 
@@ -72,8 +73,9 @@ class TodoTabRegistry
     }
 
     /** @return array<int, array{id:string,label:string,icon:string,order:int,render:callable,builtin:bool}> */
-    public function getTabs(mixed $ticket = null, bool $includeDisabled = false): array
+    public function getTabs(mixed $ticket = null, bool $includeDisabled = false, ?int $projectId = null): array
     {
+        $projectId ??= (int) (is_object($ticket) ? ($ticket->projectId ?? 0) : 0);
         $tabs = EventDispatcher::dispatch_filter('plugins.leantimelib.todo.detail.tabs', [], ['ticket' => $ticket], 'leantime');
         if (! is_array($tabs)) {
             Log::error('Leantime Library received an invalid To-do tab contribution list.');
@@ -115,7 +117,8 @@ class TodoTabRegistry
             ['id' => 'timesheet', 'label' => __('tabs.time_tracking'), 'icon' => 'fa fa-clock', 'order' => 20, 'render' => static fn () => '', 'builtin' => true],
         ], $normalized);
 
-        $savedRanks = array_flip($this->readSavedOrder());
+        $projectLayout = $projectId > 0 ? $this->readProjectLayout($projectId) : [];
+        $savedRanks = array_flip(is_array($projectLayout['order'] ?? null) ? $projectLayout['order'] : $this->readSavedOrder());
         usort($normalized, static function (array $left, array $right) use ($savedRanks): int {
             $leftHasSavedRank = isset($savedRanks[$left['id']]);
             $rightHasSavedRank = isset($savedRanks[$right['id']]);
@@ -125,7 +128,12 @@ class TodoTabRegistry
         });
 
         $disabled = $this->readDisabledIds();
-        foreach ($normalized as &$tab) $tab['enabled'] = $tab['builtin'] || ! in_array($tab['id'], $disabled, true);
+        $projectVisible = is_array($projectLayout['visible'] ?? null) ? $projectLayout['visible'] : null;
+        foreach ($normalized as &$tab) {
+            $tab['defaultEnabled'] = ! in_array($tab['id'], $disabled, true);
+            $tab['overridden'] = $projectVisible !== null && in_array($tab['id'], $projectVisible, true) !== $tab['defaultEnabled'];
+            $tab['enabled'] = $projectVisible === null ? $tab['defaultEnabled'] : in_array($tab['id'], $projectVisible, true);
+        }
         unset($tab);
         if (! $includeDisabled) $normalized = array_values(array_filter($normalized, static fn (array $tab): bool => $tab['enabled']));
         return $normalized;
@@ -139,10 +147,55 @@ class TodoTabRegistry
 
     public function saveEnabled(array $enabledIds): bool
     {
-        $contributionIds = array_column(array_filter($this->getTabs(null, true), static fn (array $tab): bool => ! $tab['builtin']), 'id');
-        $enabledIds = array_values(array_intersect($contributionIds, array_filter($enabledIds, 'is_string')));
-        $disabledIds = array_values(array_diff($contributionIds, $enabledIds));
+        $availableIds = array_column($this->getTabs(null, true), 'id');
+        $enabledIds = array_values(array_intersect($availableIds, array_filter($enabledIds, 'is_string')));
+        if ($enabledIds === []) return false;
+        $disabledIds = array_values(array_diff($availableIds, $enabledIds));
         return $this->settings->saveSetting(self::DISABLED_SETTING, json_encode($disabledIds, JSON_THROW_ON_ERROR));
+    }
+
+    public function setProjectLayout(int $projectId, array $requestedOrder, array $visibleIds): bool
+    {
+        if ($projectId < 1) return false;
+        $tabs = $this->getTabs(null, true);
+        $available = array_column($tabs, 'id');
+        $order = $this->normalizeOrder($requestedOrder, $available);
+        $defaults = array_column($tabs, 'id');
+        $visibleIds = array_values(array_intersect($available, array_filter($visibleIds, 'is_string')));
+        if ($visibleIds === []) return false;
+        $defaultVisible = array_column(array_filter($tabs, static fn (array $tab): bool => $tab['defaultEnabled']), 'id');
+        $layout = [];
+        if ($order !== $defaults) $layout['order'] = $order;
+        $visibleSet = $visibleIds;
+        $defaultVisibleSet = $defaultVisible;
+        sort($visibleSet);
+        sort($defaultVisibleSet);
+        if ($visibleSet !== $defaultVisibleSet) $layout['visible'] = $visibleIds;
+        $key = 'projectsettings.'.$projectId.self::PROJECT_LAYOUT_SUFFIX;
+        if ($layout === []) {
+            $this->settings->deleteSetting($key);
+            return true;
+        }
+        return $this->settings->saveSetting($key, json_encode($layout, JSON_THROW_ON_ERROR));
+    }
+
+    public function resetProjectLayout(int $projectId): void
+    {
+        if ($projectId > 0) $this->settings->deleteSetting('projectsettings.'.$projectId.self::PROJECT_LAYOUT_SUFFIX);
+    }
+
+    public function resetLayout(): void
+    {
+        $this->settings->deleteSetting(self::ORDER_SETTING);
+        $this->settings->deleteSetting(self::DISABLED_SETTING);
+    }
+
+    private function readProjectLayout(int $projectId): array
+    {
+        $value = $this->settings->getSetting('projectsettings.'.$projectId.self::PROJECT_LAYOUT_SUFFIX, '{}');
+        if (! is_string($value)) return [];
+        $layout = json_decode($value, true);
+        return is_array($layout) ? $layout : [];
     }
 
     private function normalizeOrder(array $requested, array $available): array

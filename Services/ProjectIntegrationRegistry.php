@@ -11,11 +11,11 @@ class ProjectIntegrationRegistry
 {
     public const FILTER = 'leantime.plugins.leantimelib.project.integrations.panels';
 
-    public function __construct(private TodoSectionRegistry $todoSections) {}
+    public function __construct(private TodoLayoutEditor $layoutEditor) {}
 
     public function renderPanels(int $projectId, bool $canEdit): string
     {
-        $html = $this->todoSections->renderProjectVisibilityControls($projectId, $canEdit);
+        $html = $this->layoutEditor->renderProjectControls($projectId, $canEdit);
         $panels = EventDispatcher::dispatch_filter(
             'plugins.leantimelib.project.integrations.panels',
             [],

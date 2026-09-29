@@ -28,58 +28,90 @@
                     <input type="checkbox" name="hideExploreApps" value="1" @if ($hideExploreApps) checked @endif>
                     Hide Explore Apps and make My Apps the only Apps tab and destination
                 </label>
+                <label class="lt-library-sortable__toggle">
+                    <input type="checkbox" name="hideOnboardingSteps" value="1" @if ($hideOnboardingSteps) checked @endif>
+                    Use compact invited-user onboarding and skip theme, color, and schedule steps
+                </label>
+                <p>Compact onboarding keeps account setup, uses the current defaults for the skipped choices, and points new users to their profile settings for later customization.</p>
+                <label class="lt-library-sortable__toggle">
+                    <input type="checkbox" name="disableStarterProject" value="1" @if ($disableStarterProject) checked @endif>
+                    Do not automatically create a starter “My Project” and its sample content
+                </label>
+                <p>Users without a project will be left on their dashboard or project hub without an auto-generated project.</p>
 
-                <h2>To-do tabs</h2>
-                <p>Drag to set the order of Details, Files, Time Tracking, and plugin tabs. Core tabs stay enabled; plugin tabs can be hidden here.</p>
-                <ol class="lt-library-sortable" data-library-sortable>
-                    @foreach ($tabs as $tab)
-                        <li class="lt-library-sortable__item" draggable="true" data-order-id="{{ $tab['id'] }}">
-                            <input type="hidden" name="tabOrder[]" value="{{ $tab['id'] }}">
-                            <span class="lt-library-sortable__handle" aria-hidden="true"><i class="fa-solid fa-grip-vertical"></i></span>
-                            @if ($tab['icon'] !== '') <i class="{{ $tab['icon'] }}" aria-hidden="true"></i> @endif
-                            <span class="lt-library-sortable__label">{{ $tab['label'] }}</span>
-                            @if ($tab['builtin'])
-                                <span class="lt-library-sortable__status">Leantime tab</span>
-                            @else
-                                <label class="lt-library-sortable__toggle">
-                                    <input type="checkbox" name="tabEnabled[]" value="{{ $tab['id'] }}" @if ($tab['enabled']) checked @endif>
-                                    Show in To-do modal
-                                </label>
-                            @endif
-                            <div class="lt-library-sortable__controls">
-                                <button type="button" class="btn btn-default" data-move="up" aria-label="Move {{ $tab['label'] }} up">↑</button>
-                                <button type="button" class="btn btn-default" data-move="down" aria-label="Move {{ $tab['label'] }} down">↓</button>
-                            </div>
-                        </li>
-                    @endforeach
-                </ol>
+                <h2>To-do modal layout</h2>
+                <p>Drag each tab or sidebar section between the visible and hidden areas, then arrange visible items in the order you want. Projects inherit this default until a project override is saved.</p>
 
-                <h2>To-do details sidebar</h2>
-                <p>Drag Organization, Schedule, and plugin sections to control their order. Plugin sections can be hidden here.</p>
-                <ol class="lt-library-sortable" data-library-sortable>
-                    @foreach ($sections as $section)
-                        <li class="lt-library-sortable__item" draggable="true" data-order-id="{{ $section['id'] }}">
-                            <input type="hidden" name="sectionOrder[]" value="{{ $section['id'] }}">
-                            <span class="lt-library-sortable__handle" aria-hidden="true"><i class="fa-solid fa-grip-vertical"></i></span>
-                            @if ($section['icon'] !== '') <i class="{{ $section['icon'] }}" aria-hidden="true"></i> @endif
-                            <span class="lt-library-sortable__label">{{ $section['label'] }}</span>
-                            @if ($section['builtin'])
-                                <span class="lt-library-sortable__status">Leantime section</span>
-                            @else
-                                <label class="lt-library-sortable__toggle">
-                                    <input type="checkbox" name="sectionEnabled[]" value="{{ $section['id'] }}" @if ($section['enabled']) checked @endif>
-                                    Show in To-do modal
-                                </label>
-                            @endif
-                            <div class="lt-library-sortable__controls">
-                                <button type="button" class="btn btn-default" data-move="up" aria-label="Move {{ $section['label'] }} up">↑</button>
-                                <button type="button" class="btn btn-default" data-move="down" aria-label="Move {{ $section['label'] }} down">↓</button>
-                            </div>
-                        </li>
-                    @endforeach
-                </ol>
+                <section class="lt-library-layout-editor" data-library-layout-editor data-kind="tabs">
+                    <h3>Modal tabs</h3>
+                    <div class="lt-library-layout-editor__columns">
+                        <div><h4>Shown in modal</h4><ol class="lt-library-layout-editor__lane" data-library-lane="visible">
+                            @foreach ($tabs as $tab)
+                                @if ($tab['enabled'])
+                                    <li class="lt-library-layout-editor__item" draggable="true" data-widget-id="{{ $tab['id'] }}">
+                                        <input type="hidden" name="tabOrder[]" value="{{ $tab['id'] }}">
+                                        <input type="hidden" name="tabEnabled[]" value="{{ $tab['id'] }}" data-widget-enabled>
+                                        <span class="lt-library-layout-editor__grip" aria-hidden="true">⠿</span>
+                                        @if ($tab['icon'] !== '') <i class="{{ $tab['icon'] }}" aria-hidden="true"></i> @endif
+                                        <span>{{ $tab['label'] }}</span><small>{{ $tab['builtin'] ? 'Leantime tab' : 'Plugin tab' }}</small>
+                                        <button type="button" class="btn btn-default" data-widget-hide aria-label="Hide {{ $tab['label'] }}">Hide</button>
+                                    </li>
+                                @endif
+                            @endforeach
+                        </ol></div>
+                        <div><h4>Hidden from modal</h4><ol class="lt-library-layout-editor__lane" data-library-lane="hidden">
+                            @foreach ($tabs as $tab)
+                                @if (!$tab['enabled'])
+                                    <li class="lt-library-layout-editor__item" draggable="true" data-widget-id="{{ $tab['id'] }}">
+                                        <input type="hidden" name="tabOrder[]" value="{{ $tab['id'] }}">
+                                        <input type="hidden" name="tabEnabled[]" value="{{ $tab['id'] }}" data-widget-enabled disabled>
+                                        <span class="lt-library-layout-editor__grip" aria-hidden="true">⠿</span>
+                                        @if ($tab['icon'] !== '') <i class="{{ $tab['icon'] }}" aria-hidden="true"></i> @endif
+                                        <span>{{ $tab['label'] }}</span><small>{{ $tab['builtin'] ? 'Leantime tab' : 'Plugin tab' }}</small>
+                                        <button type="button" class="btn btn-default" data-widget-show aria-label="Show {{ $tab['label'] }}">Show</button>
+                                    </li>
+                                @endif
+                            @endforeach
+                        </ol></div>
+                    </div>
+                </section>
+
+                <section class="lt-library-layout-editor" data-library-layout-editor data-kind="sections">
+                    <h3>Details sidebar sections</h3>
+                    <div class="lt-library-layout-editor__columns">
+                        <div><h4>Shown in modal</h4><ol class="lt-library-layout-editor__lane" data-library-lane="visible">
+                            @foreach ($sections as $section)
+                                @if ($section['enabled'])
+                                    <li class="lt-library-layout-editor__item" draggable="true" data-widget-id="{{ $section['id'] }}">
+                                        <input type="hidden" name="sectionOrder[]" value="{{ $section['id'] }}">
+                                        <input type="hidden" name="sectionEnabled[]" value="{{ $section['id'] }}" data-widget-enabled>
+                                        <span class="lt-library-layout-editor__grip" aria-hidden="true">⠿</span>
+                                        @if ($section['icon'] !== '') <i class="{{ $section['icon'] }}" aria-hidden="true"></i> @endif
+                                        <span>{{ $section['label'] }}</span><small>{{ $section['builtin'] ? 'Leantime section' : 'Plugin section' }}</small>
+                                        <button type="button" class="btn btn-default" data-widget-hide aria-label="Hide {{ $section['label'] }}">Hide</button>
+                                    </li>
+                                @endif
+                            @endforeach
+                        </ol></div>
+                        <div><h4>Hidden from modal</h4><ol class="lt-library-layout-editor__lane" data-library-lane="hidden">
+                            @foreach ($sections as $section)
+                                @if (!$section['enabled'])
+                                    <li class="lt-library-layout-editor__item" draggable="true" data-widget-id="{{ $section['id'] }}">
+                                        <input type="hidden" name="sectionOrder[]" value="{{ $section['id'] }}">
+                                        <input type="hidden" name="sectionEnabled[]" value="{{ $section['id'] }}" data-widget-enabled disabled>
+                                        <span class="lt-library-layout-editor__grip" aria-hidden="true">⠿</span>
+                                        @if ($section['icon'] !== '') <i class="{{ $section['icon'] }}" aria-hidden="true"></i> @endif
+                                        <span>{{ $section['label'] }}</span><small>{{ $section['builtin'] ? 'Leantime section' : 'Plugin section' }}</small>
+                                        <button type="button" class="btn btn-default" data-widget-show aria-label="Show {{ $section['label'] }}">Show</button>
+                                    </li>
+                                @endif
+                            @endforeach
+                        </ol></div>
+                    </div>
+                </section>
 
                 <button class="btn btn-primary" type="submit">Save Library settings</button>
+                <button class="btn btn-default" type="submit" name="resetLayout" value="1" formnovalidate>Reset To-do layout to defaults</button>
             </form>
         </div>
     </div>

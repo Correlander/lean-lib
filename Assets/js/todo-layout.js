@@ -8,6 +8,8 @@
         const list = Array.from(container.children).find((child) => child.tagName === 'UL');
         if (!list || !Array.isArray(order)) return;
 
+        const activeLink = list.querySelector('li.ui-tabs-active a[href^="#"]');
+        const activeId = activeLink ? activeLink.getAttribute('href').slice(1) : null;
         const headers = new Map();
         Array.from(list.children).forEach((item) => {
             const link = item.querySelector('a[href^="#"]');
@@ -15,8 +17,11 @@
         });
 
         const orderedHeaders = order.map((id) => headers.get(id)).filter(Boolean);
-        Array.from(list.children).forEach((item) => {
-            if (!orderedHeaders.includes(item)) orderedHeaders.push(item);
+        headers.forEach((item, id) => {
+            const visible = order.includes(id);
+            item.hidden = !visible;
+            item.setAttribute('aria-hidden', visible ? 'false' : 'true');
+            if (!visible) orderedHeaders.push(item);
         });
         orderedHeaders.forEach((item, index) => {
             if (list.children[index] !== item) list.insertBefore(item, list.children[index] || null);
@@ -27,8 +32,11 @@
             if (child.id) panels.set(child.id, child);
         });
         const orderedPanels = order.map((id) => panels.get(id)).filter(Boolean);
-        Array.from(container.children).forEach((child) => {
-            if (child.id && !orderedPanels.includes(child)) orderedPanels.push(child);
+        panels.forEach((panel, id) => {
+            const visible = order.includes(id);
+            panel.hidden = !visible;
+            panel.setAttribute('aria-hidden', visible ? 'false' : 'true');
+            if (!visible) orderedPanels.push(panel);
         });
 
         // Keep the native tab list first; panel order starts immediately after it.
@@ -44,7 +52,11 @@
         if (window.jQuery) {
             try {
                 const tabs = window.jQuery(container);
-                if (tabs.data('ui-tabs')) tabs.tabs('refresh');
+                if (tabs.data('ui-tabs')) {
+                    tabs.tabs('refresh');
+                    if (order.length) tabs.tabs('option', 'active', activeId && order.includes(activeId) ? order.indexOf(activeId) : 0);
+                    else tabs.tabs('option', 'active', false);
+                }
             } catch (error) {
                 console.warn('[LeantimeLib todo layout] Could not refresh the tab widget.', error);
             }
@@ -69,9 +81,14 @@
             elements.set(section.dataset.leantimelibSection, section);
         });
 
+        elements.forEach((element, id) => {
+            const visible = order.includes(id);
+            element.hidden = !visible;
+            element.setAttribute('aria-hidden', visible ? 'false' : 'true');
+        });
         const ordered = order.map((id) => elements.get(id)).filter((element) => element && element.parentElement === container);
-        elements.forEach((element) => {
-            if (element.parentElement === container && !ordered.includes(element)) ordered.push(element);
+        elements.forEach((element, id) => {
+            if (element.parentElement === container && !order.includes(id)) ordered.push(element);
         });
         ordered.forEach((element, index) => {
             if (container.children[index] !== element) container.insertBefore(element, container.children[index] || null);

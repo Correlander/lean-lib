@@ -5,6 +5,7 @@ namespace Leantime\Plugins\LeantimeLib\Services;
 use Illuminate\Support\Facades\Log;
 use Leantime\Core\Events\EventDispatcher;
 use Leantime\Domain\Setting\Services\Setting as SettingService;
+use RuntimeException;
 use Throwable;
 
 /** Central registry for native and plugin To-do sidebar sections. */
@@ -16,6 +17,7 @@ class TodoSectionRegistry
     private const DISABLED_SETTING = 'leantimelib.todo.detail.disabledSections';
     private const PROJECT_OVERRIDES_PREFIX = 'projectsettings.';
     private const PROJECT_OVERRIDES_SUFFIX = '.leantimelib.todo.detail.sectionOverrides';
+    private const PROJECT_ORDER_SUFFIX = '.leantimelib.todo.detail.sectionOrderOverride';
 
     public function __construct(private SettingService $settings) {}
 
@@ -89,7 +91,9 @@ class TodoSectionRegistry
             ['id' => 'schedule', 'label' => __('subtitles.schedule'), 'icon' => 'fa fa-calendar', 'order' => 10, 'render' => static fn () => '', 'builtin' => true],
         ], $normalized);
 
-        $savedRanks = array_flip($this->readSavedOrder());
+        $projectId = (int) (is_object($ticket) ? ($ticket->projectId ?? 0) : ($params['projectId'] ?? 0));
+        $projectOrder = $projectId > 0 ? $this->readProjectOrder($projectId) : [];
+        $savedRanks = array_flip($projectOrder !== [] ? $projectOrder : $this->readSavedOrder());
         usort($normalized, static function (array $left, array $right) use ($savedRanks): int {
             $leftHasSavedRank = isset($savedRanks[$left['id']]);
             $rightHasSavedRank = isset($savedRanks[$right['id']]);
@@ -99,13 +103,11 @@ class TodoSectionRegistry
         });
 
         $disabled = $this->readDisabledIds();
-        $projectId = (int) (is_object($ticket) ? ($ticket->projectId ?? 0) : ($params['projectId'] ?? 0));
         $overrides = $projectId > 0 ? $this->readProjectOverrides($projectId) : [];
         foreach ($normalized as &$section) {
-            $section['defaultEnabled'] = $section['builtin'] || ! in_array($section['id'], $disabled, true);
-            $section['overridden'] = ! $section['builtin'] && array_key_exists($section['id'], $overrides);
-            $section['enabled'] = $section['builtin']
-                || ($section['overridden'] ? $overrides[$section['id']] : $section['defaultEnabled']);
+            $section['defaultEnabled'] = ! in_array($section['id'], $disabled, true);
+            $section['overridden'] = array_key_exists($section['id'], $overrides);
+            $section['enabled'] = $section['overridden'] ? $overrides[$section['id']] : $section['defaultEnabled'];
         }
         unset($section);
         if (! $includeDisabled) $normalized = array_values(array_filter($normalized, static fn (array $section): bool => $section['enabled']));
@@ -186,9 +188,59 @@ class TodoSectionRegistry
 
     public function saveEnabled(array $enabledIds): bool
     {
-        $contributionIds = array_column(array_filter($this->getSections(null, [], true), static fn (array $section): bool => ! $section['builtin']), 'id');
-        $enabledIds = array_values(array_intersect($contributionIds, array_filter($enabledIds, 'is_string')));
-        return $this->settings->saveSetting(self::DISABLED_SETTING, json_encode(array_values(array_diff($contributionIds, $enabledIds)), JSON_THROW_ON_ERROR));
+        $availableIds = array_column($this->getSections(null, [], true), 'id');
+        $enabledIds = array_values(array_intersect($availableIds, array_filter($enabledIds, 'is_string')));
+        return $this->settings->saveSetting(self::DISABLED_SETTING, json_encode(array_values(array_diff($availableIds, $enabledIds)), JSON_THROW_ON_ERROR));
+    }
+
+    public function setProjectLayout(int $projectId, array $requestedOrder, array $visibleIds): bool
+    {
+        if ($projectId < 1) return false;
+        $sections = $this->getSections(null, [], true);
+        $available = array_column($sections, 'id');
+        $order = $this->normalizeOrder($requestedOrder, $available);
+        $defaults = array_column($sections, 'id');
+        $visibleIds = array_values(array_intersect($available, array_filter($visibleIds, 'is_string')));
+        $defaultVisible = array_column(array_filter($sections, static fn (array $section): bool => $section['defaultEnabled']), 'id');
+        $overrides = [];
+        foreach ($available as $id) {
+            $default = in_array($id, $defaultVisible, true);
+            $visible = in_array($id, $visibleIds, true);
+            if ($visible !== $default) $overrides[$id] = $visible;
+        }
+        $key = 'projectsettings.'.$projectId.self::PROJECT_OVERRIDES_SUFFIX;
+        $orderKey = 'projectsettings.'.$projectId.self::PROJECT_ORDER_SUFFIX;
+        if ($order === $defaults) $this->settings->deleteSetting($orderKey);
+        elseif (! $this->settings->saveSetting($orderKey, json_encode($order, JSON_THROW_ON_ERROR))) return false;
+        if ($overrides === []) $this->settings->deleteSetting($key);
+        else if (! $this->settings->saveSetting($key, json_encode($overrides, JSON_THROW_ON_ERROR))) return false;
+        return true;
+    }
+
+    public function resetProjectLayout(int $projectId): void
+    {
+        if ($projectId < 1) return;
+        $this->settings->deleteSetting('projectsettings.'.$projectId.self::PROJECT_OVERRIDES_SUFFIX);
+        $this->settings->deleteSetting('projectsettings.'.$projectId.self::PROJECT_ORDER_SUFFIX);
+    }
+
+    public function resetProjectVisibility(int $projectId): void
+    {
+        if ($projectId > 0) $this->settings->deleteSetting('projectsettings.'.$projectId.self::PROJECT_OVERRIDES_SUFFIX);
+    }
+
+    public function resetLayout(): void
+    {
+        $this->settings->deleteSetting(self::ORDER_SETTING);
+        $this->settings->deleteSetting(self::DISABLED_SETTING);
+    }
+
+    private function readProjectOrder(int $projectId): array
+    {
+        $value = $this->settings->getSetting('projectsettings.'.$projectId.self::PROJECT_ORDER_SUFFIX, '[]');
+        if (! is_string($value)) return [];
+        $order = json_decode($value, true);
+        return is_array($order) ? array_values(array_filter($order, 'is_string')) : [];
     }
 
     private function normalizeOrder(array $requested, array $available): array
