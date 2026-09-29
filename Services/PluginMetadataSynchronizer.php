@@ -83,7 +83,20 @@ class PluginMetadataSynchronizer
                 continue;
             }
 
-            $authors = is_array($metadata['authors'] ?? null) ? $metadata['authors'] : [];
+            $authors = [];
+            foreach (is_array($metadata['authors'] ?? null) ? $metadata['authors'] : [] as $author) {
+                if (! is_array($author)) {
+                    continue;
+                }
+
+                // Leantime 3.10.0's InstalledPlugin::getMetadataLinks() reads
+                // both properties without checking they exist. Composer permits
+                // email to be omitted, so normalize it to an empty string before
+                // persisting the author object to zp_plugins.
+                $author['name'] = is_string($author['name'] ?? null) ? $author['name'] : '';
+                $author['email'] = is_string($author['email'] ?? null) ? $author['email'] : '';
+                $authors[] = $author;
+            }
             $fields = [
                 'name' => trim($metadata['name']),
                 'description' => is_string($metadata['description'] ?? null) ? $metadata['description'] : '',
