@@ -1,0 +1,11 @@
+{
+  "name": "Leantime Library",
+  "description": "A shared extension registry for coordinating Leantime plugin contributions.",
+  "version": "0.1.0",
+  "type": "leantime-plugin",
+  "autoload": {
+    "psr-4": {
+      "Leantime\\Plugins\\LeantimeLib\\": ""
+    }
+  }
+}
