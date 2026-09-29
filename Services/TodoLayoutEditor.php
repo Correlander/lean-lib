@@ -172,9 +172,10 @@ class TodoLayoutEditor
     {
         $safeId = $this->e($id);
         $inputId = 'sidebar-icon-'.$safeId;
-        $html = '<div class="btn-group inlineDropDownContainerLeft lt-library-icon-picker">';
-        $html .= '<button type="button" class="icp icp-dd btn btn-default dropdown-toggle iconpicker-container" data-toggle="dropdown" data-section-icon-button="'.$safeId.'" aria-label="Choose section icon" title="Choose icon">';
-        $html .= '<span class="iconPlaceholder"><i class="'.$this->e($icon).'"'.($icon === '' ? ' hidden' : '').'></i></span><span class="caret"></span></button><div class="dropdown-menu"></div></div>';
+        $html = '<div class="lt-library-icon-picker" data-icon-picker>';
+        $html .= '<button type="button" class="btn btn-default iconpicker-container" data-section-icon-button="'.$safeId.'" aria-label="Choose section icon" aria-haspopup="listbox" aria-expanded="false" title="Choose icon">';
+        $html .= '<span class="iconPlaceholder"><i class="'.$this->e($icon).'"'.($icon === '' ? ' hidden' : '').'></i></span><span class="caret" aria-hidden="true"></span></button>';
+        $html .= '<div class="lt-library-icon-picker__menu" data-icon-picker-menu hidden><label class="lt-library-icon-picker__search"><span class="sr-only">Search icons</span><input type="search" class="form-control" data-icon-search placeholder="Search icons"></label><div class="lt-library-icon-picker__options" data-icon-options role="listbox" aria-label="Available icons"></div></div></div>';
         $html .= '<input type="hidden" id="'.$inputId.'" name="sidebarSections['.$safeId.'][icon]" value="'.$this->e($icon).'" data-section-icon-input="'.$safeId.'">';
         return $html;
     }

@@ -33,35 +33,111 @@
         }
 
         function initializeIconPicker(button) {
-            if (!button || button.dataset.iconPickerReady === '1' || !window.jQuery || !window.jQuery.fn.iconpicker) return;
+            if (!button || button.dataset.iconPickerReady === '1') return;
             const id = button.dataset.sectionIconButton;
+            const pickerElement = button.closest('[data-icon-picker]');
             const input = workspace.querySelector('[data-section-icon-input="' + CSS.escape(id) + '"]');
-            if (!input) return;
-            const choices = iconChoices.map((title) => ({ title: title, searchTerms: [title.replace(/^\w+\s+fa-/, '').replace(/-/g, ' '), 'icons'] }));
-            const picker = window.jQuery(button);
+            const menu = pickerElement && pickerElement.querySelector('[data-icon-picker-menu]');
+            const options = pickerElement && pickerElement.querySelector('[data-icon-options]');
+            const search = pickerElement && pickerElement.querySelector('[data-icon-search]');
+            if (!input || !menu || !options || !search) return;
             button.dataset.iconPickerReady = '1';
-            picker.iconpicker({
-                component: '.btn > .iconPlaceholder',
-                input: '#' + CSS.escape(input.id),
-                inputSearch: true,
-                defaultValue: 'fas fa-folder-open',
-                selected: input.value || 'fas fa-folder-open',
-                showFooter: false,
-                searchInFooter: false,
-                icons: choices
+            iconChoices.forEach(function (iconClass) {
+                const choice = document.createElement('button');
+                choice.type = 'button';
+                choice.className = 'lt-library-icon-picker__choice';
+                choice.dataset.iconClass = iconClass;
+                choice.title = iconClass;
+                choice.setAttribute('role', 'option');
+                choice.setAttribute('aria-label', iconClass.replace(/^\w+\s+fa-/, '').replace(/-/g, ' '));
+                choice.setAttribute('aria-selected', String(iconClass === input.value));
+                choice.innerHTML = '<i class="' + iconClass + '" aria-hidden="true"></i>';
+                options.appendChild(choice);
             });
-            picker.on('iconpickerSelected', function (event) {
-                input.value = event.iconpickerValue || '';
+
+            function setOpen(open) {
+                menu.hidden = !open;
+                button.setAttribute('aria-expanded', String(open));
+                pickerElement.classList.toggle('is-open', open);
+                if (open) {
+                    const buttonRect = button.getBoundingClientRect();
+                    const menuRect = menu.getBoundingClientRect();
+                    const left = Math.max(8, Math.min(buttonRect.right - menuRect.width, window.innerWidth - menuRect.width - 8));
+                    let top = buttonRect.bottom + 6;
+                    if (top + menuRect.height > window.innerHeight - 8) {
+                        top = Math.max(8, buttonRect.top - menuRect.height - 6);
+                    }
+                    menu.style.left = left + 'px';
+                    menu.style.top = top + 'px';
+                    search.focus();
+                } else {
+                    menu.style.left = '';
+                    menu.style.top = '';
+                }
+            }
+
+            button.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                setOpen(menu.hidden);
+            });
+            menu.addEventListener('click', function (event) {
+                const choice = event.target.closest('[data-icon-class]');
+                if (!choice) return;
+                input.value = choice.dataset.iconClass;
                 const icon = button.querySelector('.iconPlaceholder > i');
                 if (icon) {
                     icon.className = input.value;
                     icon.hidden = !input.value;
                 }
+                options.querySelectorAll('[data-icon-class]').forEach(function (option) {
+                    option.setAttribute('aria-selected', String(option === choice));
+                });
                 input.dispatchEvent(new Event('change', { bubbles: true }));
+                setOpen(false);
+            });
+            search.addEventListener('input', function () {
+                const query = search.value.trim().toLowerCase();
+                options.querySelectorAll('[data-icon-class]').forEach(function (choice) {
+                    choice.hidden = query !== '' && !choice.dataset.iconClass.toLowerCase().includes(query);
+                });
             });
         }
 
         workspace.querySelectorAll('[data-section-icon-button]').forEach(initializeIconPicker);
+
+        workspace.addEventListener('click', function (event) {
+            if (event.target.closest('[data-icon-picker]')) return;
+            workspace.querySelectorAll('[data-icon-picker-menu]:not([hidden])').forEach(function (menu) {
+                menu.hidden = true;
+                const picker = menu.closest('[data-icon-picker]');
+                picker.classList.remove('is-open');
+                picker.querySelector('[data-section-icon-button]').setAttribute('aria-expanded', 'false');
+            });
+        });
+        workspace.addEventListener('scroll', function () {
+            workspace.querySelectorAll('[data-icon-picker-menu]:not([hidden])').forEach(function (menu) {
+                menu.hidden = true;
+                menu.style.left = '';
+                menu.style.top = '';
+                const picker = menu.closest('[data-icon-picker]');
+                picker.classList.remove('is-open');
+                picker.querySelector('[data-section-icon-button]').setAttribute('aria-expanded', 'false');
+            });
+        }, true);
+        workspace.addEventListener('keydown', function (event) {
+            if (event.key !== 'Escape') return;
+            const picker = event.target.closest('[data-icon-picker]');
+            if (!picker) return;
+            const menu = picker.querySelector('[data-icon-picker-menu]');
+            const button = picker.querySelector('[data-section-icon-button]');
+            menu.hidden = true;
+            menu.style.left = '';
+            menu.style.top = '';
+            picker.classList.remove('is-open');
+            button.setAttribute('aria-expanded', 'false');
+            button.focus();
+        });
 
         function groupZone(sectionId) {
             return sectionId ? workspace.querySelector('[data-section-children="' + CSS.escape(sectionId) + '"]') : null;
@@ -175,6 +251,12 @@
 
         function resetLayout(button) {
             if (!isGlobal || !button) return;
+            window.clearTimeout(saveTimer);
+            if (saving) {
+                saveAgain = false;
+                window.setTimeout(function () { resetLayout(button); }, 100);
+                return;
+            }
             button.disabled = true;
             setStatus('Restoring To-do layout defaults…', 'saving');
             const body = new FormData();
@@ -232,18 +314,23 @@
             title.required = true;
 
             const picker = document.createElement('div');
-            picker.className = 'btn-group inlineDropDownContainerLeft lt-library-icon-picker';
+            picker.className = 'lt-library-icon-picker';
+            picker.dataset.iconPicker = '';
             const iconButton = document.createElement('button');
             iconButton.type = 'button';
-            iconButton.className = 'icp icp-dd btn btn-default dropdown-toggle iconpicker-container';
-            iconButton.dataset.toggle = 'dropdown';
+            iconButton.className = 'btn btn-default iconpicker-container';
             iconButton.dataset.sectionIconButton = id;
             iconButton.setAttribute('aria-label', 'Choose section icon');
+            iconButton.setAttribute('aria-haspopup', 'listbox');
+            iconButton.setAttribute('aria-expanded', 'false');
             iconButton.title = 'Choose icon';
             iconButton.innerHTML = '<span class="iconPlaceholder"><i hidden></i></span><span class="caret"></span>';
-            const dropdown = document.createElement('div');
-            dropdown.className = 'dropdown-menu';
-            picker.append(iconButton, dropdown);
+            const menu = document.createElement('div');
+            menu.className = 'lt-library-icon-picker__menu';
+            menu.dataset.iconPickerMenu = '';
+            menu.hidden = true;
+            menu.innerHTML = '<label class="lt-library-icon-picker__search"><span class="sr-only">Search icons</span><input type="search" class="form-control" data-icon-search placeholder="Search icons"></label><div class="lt-library-icon-picker__options" data-icon-options role="listbox" aria-label="Available icons"></div>';
+            picker.append(iconButton, menu);
             const iconInput = document.createElement('input');
             iconInput.type = 'hidden';
             iconInput.id = 'sidebar-icon-' + id;
@@ -279,7 +366,18 @@
             title.focus();
         }
 
+        let pointerStartedInControl = false;
+        workspace.addEventListener('pointerdown', function (event) {
+            pointerStartedInControl = !!event.target.closest('button, input, [data-icon-picker-menu]');
+        }, true);
+        workspace.addEventListener('pointerup', function () {
+            pointerStartedInControl = false;
+        }, true);
         workspace.addEventListener('dragstart', function (event) {
+            if (pointerStartedInControl || event.target.closest('button, input, [data-icon-picker-menu]')) {
+                event.preventDefault();
+                return;
+            }
             const item = event.target.closest('[data-widget-kind]');
             if (!item || !workspace.contains(item)) return;
             dragged = item;
@@ -466,7 +564,7 @@
             const button = section.querySelector('[data-section-park]');
             if (button) {
                 button.textContent = parked ? '+' : '×';
-                const label = section.querySelector('[data-section-title]')?.textContent || 'sidebar';
+                const label = section.querySelector('[data-section-label-input]')?.value || section.querySelector('[data-section-title]')?.textContent || 'sidebar';
                 button.title = (parked ? 'Restore ' : 'Park ') + label + ' section';
             }
             const headerInput = section.querySelector('h3 [data-placement-input]');
