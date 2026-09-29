@@ -79,12 +79,18 @@
     }
 
     function apply(container) {
-        const config = container.querySelector('.leantimelib-todo-layout-order');
-        if (!config) return false;
+        const config = container.querySelector('.leantimelib-todo-layout-order[data-layout]');
+        if (!config) {
+            if (container.dataset.leantimelibLayoutWarning !== '1') {
+                console.warn('[LeantimeLib] To-do modal found without layout metadata; check Library ticketTabs hook output.');
+                container.dataset.leantimelibLayoutWarning = '1';
+            }
+            return false;
+        }
 
         let layout;
         try {
-            layout = JSON.parse(config.textContent || '{}');
+            layout = JSON.parse(config.dataset.layout || '{}');
         } catch (error) {
             console.error('[LeantimeLib todo layout] Invalid layout configuration.', error);
             return false;
@@ -93,7 +99,11 @@
         reorderTabs(container, layout.tabs || []);
         const details = container.querySelector('#ticketdetails');
         reorderSidebar(details && details.querySelector('.col-md-3'), layout.sections || []);
-        container.dataset.leantimelibLayoutApplied = '1';
+        const signature = JSON.stringify(layout);
+        if (container.dataset.leantimelibLayoutApplied !== signature) {
+            container.dataset.leantimelibLayoutApplied = signature;
+            console.info('[LeantimeLib] Applied saved To-do layout.', layout);
+        }
         return true;
     }
 
