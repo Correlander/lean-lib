@@ -71,10 +71,11 @@
     }
 
     function applyFields(details, layout) {
-        if (!details || !layout || typeof layout !== 'object') return;
-        const main = details.querySelector('.col-md-9 > .row.marginBottom > .col-md-12');
-        const sidebar = details.querySelector(':scope > .row > .col-md-3');
-        if (!main || !sidebar) return;
+        if (!details || !layout || typeof layout !== 'object') return false;
+        const form = details.querySelector('form.formModal') || details;
+        const main = form.querySelector(':scope > .row > .col-md-9 > .row.marginBottom > .col-md-12');
+        const sidebar = form.querySelector(':scope > .row > .col-md-3');
+        if (!main || !sidebar) return false;
         let mainZone = main.querySelector(':scope > [data-leantimelib-field-zone="main"]');
         let sidebarZone = sidebar.querySelector(':scope > [data-leantimelib-field-zone="sidebar"]');
         if (!mainZone) {
@@ -213,6 +214,7 @@
             if (node !== auxiliaryAnchor) auxiliaryZone.insertBefore(node, auxiliaryAnchor);
             auxiliaryAnchor = node.nextSibling;
         });
+        return true;
     }
 
     function wrapAuxiliary(details, kind) {
@@ -255,7 +257,14 @@
 
         reorderTabs(container, layout.tabs || []);
         const details = container.querySelector('#ticketdetails');
-        applyFields(details, layout.fields || {});
+        if (!applyFields(details, layout.fields || {})) {
+            if (container.dataset.leantimelibLayoutWarning !== '1') {
+                console.warn('[LeantimeLib] To-do modal layout metadata was found, but the native form structure did not match.');
+                container.dataset.leantimelibLayoutWarning = '1';
+            }
+            return false;
+        }
+        delete container.dataset.leantimelibLayoutWarning;
         const signature = JSON.stringify(layout);
         if (container.dataset.leantimelibLayoutApplied !== signature) {
             container.dataset.leantimelibLayoutApplied = signature;
