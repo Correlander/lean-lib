@@ -82,6 +82,9 @@ class ProjectIntegrations
                 'fields.sidebar.*' => ['required', 'string', 'max:120'],
                 'fields.hidden' => ['present', 'array'],
                 'fields.hidden.*' => ['required', 'string', 'max:120'],
+                'fields.groups' => ['present', 'array'],
+                'fields.groups.*' => ['nullable', 'array'],
+                'fields.groups.*.*' => ['required', 'string', 'max:120'],
                 'reset' => ['nullable', 'boolean'],
             ]);
         } catch (ValidationException $exception) {

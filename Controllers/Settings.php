@@ -11,6 +11,7 @@ use Leantime\Domain\Plugins\Permissions\PluginsPermissions;
 use Leantime\Domain\Setting\Services\Setting as SettingService;
 use Leantime\Plugins\LeantimeLib\Services\TodoSectionRegistry;
 use Leantime\Plugins\LeantimeLib\Services\TodoFieldRegistry;
+use Leantime\Plugins\LeantimeLib\Services\TodoSidebarSectionRegistry;
 use Leantime\Plugins\LeantimeLib\Services\TodoTabRegistry;
 use Leantime\Plugins\LeantimeLib\Services\TodoLayoutEditor;
 
@@ -19,13 +20,15 @@ class Settings extends Controller
     private TodoTabRegistry $registry;
     private TodoSectionRegistry $sectionRegistry;
     private TodoFieldRegistry $fieldRegistry;
+    private TodoSidebarSectionRegistry $sidebarSectionRegistry;
     private SettingService $settings;
 
-    public function init(TodoTabRegistry $registry, TodoSectionRegistry $sectionRegistry, TodoFieldRegistry $fieldRegistry, SettingService $settings): void
+    public function init(TodoTabRegistry $registry, TodoSectionRegistry $sectionRegistry, TodoFieldRegistry $fieldRegistry, TodoSidebarSectionRegistry $sidebarSectionRegistry, SettingService $settings): void
     {
         $this->registry = $registry;
         $this->sectionRegistry = $sectionRegistry;
         $this->fieldRegistry = $fieldRegistry;
+        $this->sidebarSectionRegistry = $sidebarSectionRegistry;
         $this->settings = $settings;
     }
 
@@ -40,7 +43,7 @@ class Settings extends Controller
     #[RequiresPermission(PluginsPermissions::MANAGE, global: true)]
     public function post($params)
     {
-        $input = $this->incomingRequest->only(['tabOrder', 'tabEnabled', 'fieldLayout', 'hideExploreApps', 'fastOnboarding', 'resetLayout']);
+        $input = $this->incomingRequest->only(['tabOrder', 'tabEnabled', 'fieldLayout', 'sidebarSectionsPresent', 'sidebarSections', 'hideExploreApps', 'fastOnboarding', 'resetLayout']);
         try {
             $validated = ValidationException::validate($input, [
                 'tabOrder' => ['nullable', 'array'],
@@ -56,6 +59,13 @@ class Settings extends Controller
                 'fieldLayout.sidebar.*' => ['required', 'string', 'max:120'],
                 'fieldLayout.parked' => ['nullable', 'array'],
                 'fieldLayout.parked.*' => ['required', 'string', 'max:120'],
+                'fieldLayout.groups' => ['nullable', 'array'],
+                'fieldLayout.groups.*' => ['nullable', 'array'],
+                'fieldLayout.groups.*.*' => ['required', 'string', 'max:120'],
+                'sidebarSectionsPresent' => ['nullable', 'boolean'],
+                'sidebarSections' => ['nullable', 'array'],
+                'sidebarSections.*.label' => ['required', 'string', 'max:80'],
+                'sidebarSections.*.icon' => ['nullable', 'string', 'max:120', 'regex:/^[a-zA-Z0-9 _-]*$/'],
                 'hideExploreApps' => ['nullable', 'boolean'],
                 'fastOnboarding' => ['nullable', 'boolean'],
                 'resetLayout' => ['nullable', 'boolean'],
@@ -80,6 +90,7 @@ class Settings extends Controller
 
         if (filter_var($validated['resetLayout'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
             $this->registry->resetLayout();
+            $this->sidebarSectionRegistry->resetDefinitions();
             $this->fieldRegistry->resetLayout();
             $preferencesSaved = $this->settings->saveSetting('leantimelib.ui.hideExploreApps', filter_var($validated['hideExploreApps'] ?? false, FILTER_VALIDATE_BOOLEAN) ? '1' : '0')
                 && $this->settings->saveSetting('leantimelib.ui.fastOnboarding', filter_var($validated['fastOnboarding'] ?? false, FILTER_VALIDATE_BOOLEAN) ? '1' : '0');
@@ -95,6 +106,8 @@ class Settings extends Controller
         $order = $validated['tabOrder'] ?? [];
         $failureLogged = false;
         try {
+            $sidebarSectionsSaved = ! filter_var($validated['sidebarSectionsPresent'] ?? false, FILTER_VALIDATE_BOOLEAN)
+                || $this->sidebarSectionRegistry->saveDefinitions($validated['sidebarSections'] ?? []);
             $tabsSaved = is_array($order) && $this->registry->saveOrder($order);
             $tabsEnabledSaved = $this->registry->saveEnabled($validated['tabEnabled'] ?? []);
             $fieldLayoutSaved = $this->fieldRegistry->saveLayout([
@@ -102,12 +115,13 @@ class Settings extends Controller
                 'auxiliary' => $validated['fieldLayout']['auxiliary'] ?? [],
                 'sidebar' => $validated['fieldLayout']['sidebar'] ?? [],
                 'hidden' => $validated['fieldLayout']['parked'] ?? [],
+                'groups' => $validated['fieldLayout']['groups'] ?? [],
             ]);
             $hideExploreApps = filter_var($validated['hideExploreApps'] ?? false, FILTER_VALIDATE_BOOLEAN);
             $uiPreferenceSaved = $this->settings->saveSetting('leantimelib.ui.hideExploreApps', $hideExploreApps ? '1' : '0');
             $fastOnboarding = filter_var($validated['fastOnboarding'] ?? false, FILTER_VALIDATE_BOOLEAN);
             $fastOnboardingSaved = $this->settings->saveSetting('leantimelib.ui.fastOnboarding', $fastOnboarding ? '1' : '0');
-            $saved = $tabsSaved && $tabsEnabledSaved && $fieldLayoutSaved && $uiPreferenceSaved && $fastOnboardingSaved;
+            $saved = $sidebarSectionsSaved && $tabsSaved && $tabsEnabledSaved && $fieldLayoutSaved && $uiPreferenceSaved && $fastOnboardingSaved;
         } catch (\Throwable $exception) {
             Log::error('Leantime Library could not save the To-do layout order.', [
                 'exception_class' => $exception::class,

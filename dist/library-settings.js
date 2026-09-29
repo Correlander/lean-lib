@@ -7,26 +7,44 @@
         let dragged = null;
         const form = workspace.closest('form');
 
-        function resolveZone(item, zone) {
-            if (!item || !zone || zone.dataset.libraryZone !== 'sidebar' || item.dataset.widgetKind !== 'fields') return zone;
-            const groups = {
-                organization: ['type', 'project', 'milestone', 'sprint', 'related'],
-                schedule: ['workStart', 'workEnd', 'plannedHours']
-            };
-            for (const [group, ids] of Object.entries(groups)) {
-                if (!ids.includes(item.dataset.widgetId)) continue;
-                return workspace.querySelector('[data-section-children="' + group + '"]') || zone;
+        function groupZone(sectionId) {
+            return sectionId ? workspace.querySelector('[data-section-children="' + CSS.escape(sectionId) + '"]') : null;
+        }
+
+        function setGroup(item, sectionId) {
+            if (sectionId) item.dataset.parentSection = sectionId;
+            else delete item.dataset.parentSection;
+            let input = item.querySelector('[data-group-input]');
+            if (sectionId && form && !input) {
+                input = document.createElement('input');
+                input.type = 'hidden';
+                input.dataset.groupInput = '';
+                item.appendChild(input);
             }
-            return zone;
+            if (input) {
+                if (!sectionId) input.remove();
+                else {
+                    input.name = 'fieldLayout[groups][' + sectionId + '][]';
+                    input.value = item.dataset.widgetId;
+                }
+            }
         }
 
         function place(item, zone) {
+            if (!item || !zone) return;
+            const zoneName = zone.dataset.libraryZone;
+            if (zoneName !== 'parked' && item.dataset.widgetKind !== 'sectionHeader') {
+                setGroup(item, zone.dataset.sectionChildren || null);
+            }
             item.dataset.widgetZone = zone.dataset.libraryZone;
             item.classList.toggle('is-parked', zone.dataset.libraryZone === 'parked');
-            item.querySelectorAll('input[type="hidden"]').forEach(function (input) {
-                if (input.name === 'tabEnabled[]' || input.name === 'sectionEnabled[]') input.disabled = zone.dataset.libraryZone === 'parked';
-                if (input.name.startsWith('fieldLayout[')) input.name = 'fieldLayout[' + (zone.dataset.libraryZone === 'parked' ? 'parked' : zone.dataset.libraryZone) + '][]';
-            });
+            if (item.dataset.widgetKind === 'tabs') {
+                const enabled = item.querySelector('input[name="tabEnabled[]"]');
+                if (enabled) enabled.disabled = zoneName === 'parked';
+            } else {
+                const placement = item.querySelector('[data-placement-input]');
+                if (placement) placement.name = 'fieldLayout[' + (zoneName === 'parked' ? 'parked' : zoneName) + '][]';
+            }
             const button = item.querySelector('[data-widget-park], [data-widget-add]');
             if (button) {
                 if (zone.dataset.libraryZone === 'parked') {
@@ -68,29 +86,22 @@
                     : ['sidebar', 'parked'].includes(zone.dataset.libraryZone);
             if (!allowed) return;
             event.preventDefault();
-            if (kind === 'sectionHeader' || kind === 'sections') {
+            if (kind === 'sectionHeader') {
                 const zoneName = zone.dataset.libraryZone;
-                const targetUnit = event.target.closest('[data-section-preview], [data-widget-kind="sections"]');
-                if (targetUnit && targetUnit !== dragged) {
+                const targetUnit = event.target.closest('[data-section-preview], [data-widget-kind="sections"], [data-widget-kind="fields"]');
+                const destination = workspace.querySelector(zoneName === 'sidebar' ? '.lt-library-sidebar-units' : '.lt-library-ticket__parked > [data-library-zone="parked"]');
+                if (targetUnit && targetUnit !== dragged && targetUnit.parentElement === destination) {
                     const after = event.clientY > targetUnit.getBoundingClientRect().top + targetUnit.getBoundingClientRect().height / 2;
-                    targetUnit.parentElement.insertBefore(dragged, after ? targetUnit.nextSibling : targetUnit);
+                    destination.insertBefore(dragged, after ? targetUnit.nextSibling : targetUnit);
                 } else {
-                    const target = zoneName === 'sidebar'
-                        ? workspace.querySelector('.lt-library-sidebar-units')
-                        : workspace.querySelector('.lt-library-ticket__parked > [data-library-zone="parked"]');
-                    if (target) {
-                        target.appendChild(dragged);
-                        if (kind === 'sections') place(dragged, target);
+                    if (destination) {
+                        destination.appendChild(dragged);
                     }
                 }
                 if (kind === 'sectionHeader') setSectionZone(dragged, zoneName);
-                else {
-                    const target = dragged.closest('[data-library-zone]');
-                    if (target) place(dragged, target);
-                }
                 return;
             }
-            const destination = resolveZone(dragged, zone);
+            const destination = zone;
             const target = event.target.closest('[data-widget-kind]');
             if (target === dragged) return;
             if (!target || target.dataset.widgetKind !== kind || target.parentElement !== destination) {
@@ -104,6 +115,25 @@
         });
         workspace.addEventListener('drop', function (event) { if (event.target.closest('[data-library-zone]')) event.preventDefault(); });
         workspace.addEventListener('click', function (event) {
+            const addSection = event.target.closest('[data-sidebar-section-add]');
+            if (addSection) return; // The section-manager listener handles this control.
+            const deleteSection = event.target.closest('[data-sidebar-section-delete]');
+            if (deleteSection) {
+                const id = deleteSection.dataset.sidebarSectionDelete;
+                const section = workspace.querySelector('[data-section-preview="' + CSS.escape(id) + '"]');
+                const raw = workspace.querySelector('.lt-library-sidebar-units');
+                const children = section && section.querySelector('[data-section-children]');
+                if (section && children && raw) {
+                    Array.from(children.querySelectorAll(':scope > [data-widget-kind]')).forEach(function (item) {
+                        raw.appendChild(item);
+                        place(item, raw);
+                    });
+                    workspace.querySelectorAll('[data-parent-section="' + CSS.escape(id) + '"]').forEach(function (item) { setGroup(item, null); });
+                    section.remove();
+                }
+                deleteSection.closest('[data-sidebar-section-row]').remove();
+                return;
+            }
             const sectionButton = event.target.closest('[data-section-park]');
             if (sectionButton) {
                 const section = sectionButton.closest('[data-section-preview]');
@@ -123,8 +153,85 @@
             if (!item) return;
             const defaultZone = item.dataset.defaultZone || (item.dataset.widgetKind === 'tabs' ? 'tabs' : 'sidebar');
             const name = button.hasAttribute('data-widget-add') ? defaultZone : 'parked';
-            const zone = resolveZone(item, workspace.querySelector('[data-library-zone="' + name + '"]'));
+            const zone = name === 'sidebar' && item.dataset.parentSection
+                ? groupZone(item.dataset.parentSection)
+                : workspace.querySelector('[data-library-zone="' + name + '"]');
             if (zone) { zone.appendChild(item); place(item, zone); }
+        });
+
+        workspace.parentElement.addEventListener('input', function (event) {
+            const labelInput = event.target.closest('[data-section-label-input]');
+            const iconInput = event.target.closest('[data-section-icon-input]');
+            const input = labelInput || iconInput;
+            if (!input) return;
+            const section = workspace.querySelector('[data-section-preview="' + CSS.escape(input.dataset[labelInput ? 'sectionLabelInput' : 'sectionIconInput']) + '"]');
+            if (!section) return;
+            if (labelInput) section.querySelector('[data-section-title]').textContent = labelInput.value || 'Untitled section';
+            if (iconInput) {
+                const icon = section.querySelector('[data-section-icon]');
+                icon.className = input.value;
+                icon.hidden = !input.value.trim();
+            }
+        });
+
+        const sectionManager = workspace.querySelector('[data-sidebar-section-settings]');
+        if (sectionManager) sectionManager.addEventListener('click', function (event) {
+            const button = event.target.closest('[data-sidebar-section-add]');
+            if (!button) return;
+            event.preventDefault();
+            const id = 'sidebar-' + (window.crypto && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Math.random().toString(36).slice(2, 14));
+            const row = document.createElement('div');
+            row.className = 'lt-library-sidebar-manager__row';
+            row.dataset.sidebarSectionRow = id;
+            row.innerHTML = '<label>Heading<input type="text" maxlength="80" required data-section-label-input="' + id + '"></label><label>Icon classes<input type="text" maxlength="120" placeholder="fa-solid fa-folder" data-section-icon-input="' + id + '"></label><button type="button" class="btn btn-default" data-sidebar-section-delete="' + id + '">Remove section</button>';
+            row.querySelector('[data-section-label-input]').name = 'sidebarSections[' + id + '][label]';
+            row.querySelector('[data-section-label-input]').value = 'New section';
+            row.querySelector('[data-section-icon-input]').name = 'sidebarSections[' + id + '][icon]';
+            sectionManager.appendChild(row);
+
+            const section = document.createElement('section');
+            section.className = 'lt-library-preview-section';
+            section.dataset.widgetKind = 'sectionHeader';
+            section.dataset.widgetId = id;
+            section.dataset.sectionPreview = id;
+            section.dataset.sectionZone = 'sidebar';
+            section.draggable = true;
+            const title = document.createElement('h3');
+            const caret = document.createElement('i');
+            caret.className = 'fa fa-angle-down';
+            caret.setAttribute('aria-hidden', 'true');
+            const icon = document.createElement('i');
+            icon.dataset.sectionIcon = '';
+            icon.setAttribute('aria-hidden', 'true');
+            icon.hidden = true;
+            const label = document.createElement('span');
+            label.dataset.sectionTitle = '';
+            label.textContent = 'New section';
+            title.append(caret, icon, label);
+            const grip = document.createElement('button');
+            grip.type = 'button';
+            grip.className = 'lt-library-section-handle';
+            grip.setAttribute('aria-hidden', 'true');
+            grip.tabIndex = -1;
+            grip.textContent = '⠿';
+            const park = document.createElement('button');
+            park.type = 'button';
+            park.dataset.sectionPark = id;
+            park.title = 'Park New section';
+            park.textContent = '×';
+            title.append(grip, park);
+            const placement = document.createElement('input');
+            placement.type = 'hidden';
+            placement.dataset.placementInput = '';
+            placement.name = 'fieldLayout[sidebar][]';
+            placement.value = id;
+            title.appendChild(placement);
+            const children = document.createElement('ol');
+            children.className = 'lt-library-zone';
+            children.dataset.libraryZone = 'sidebar';
+            children.dataset.sectionChildren = id;
+            section.append(title, children);
+            workspace.querySelector('.lt-library-sidebar-units').appendChild(section);
         });
 
         function setSectionZone(section, zoneName) {
@@ -135,15 +242,11 @@
             const button = section.querySelector('[data-section-park]');
             if (button) {
                 button.textContent = parked ? '+' : '×';
-                button.title = (parked ? 'Restore ' : 'Park ') + (sectionId === 'organization' ? 'Organization' : 'Schedule') + ' section';
+                const label = section.querySelector('[data-section-title]')?.textContent || 'sidebar';
+                button.title = (parked ? 'Restore ' : 'Park ') + label + ' section';
             }
-            const headerInput = section.querySelector('h3 input[name^="fieldLayout["]');
+            const headerInput = section.querySelector('h3 [data-placement-input]');
             if (headerInput) headerInput.name = 'fieldLayout[' + zoneName + '][]';
-            const childZone = section.querySelector('[data-section-children]');
-            if (childZone) childZone.dataset.libraryZone = zoneName;
-            section.querySelectorAll('[data-widget-kind="fields"]').forEach(function (item) {
-                if (childZone) place(item, childZone);
-            });
         }
         if (form) form.addEventListener('submit', function () {
             workspace.querySelectorAll('[data-widget-kind]').forEach(function (item) {

@@ -132,6 +132,48 @@
     color: var(--secondary-text-color, #68707b);
 }
 
+.lt-library-sidebar-manager {
+    margin: 1rem 0;
+    padding: .9rem 1rem;
+    border: 1px solid var(--box-border-color, #d9d9d9);
+    border-radius: 7px;
+    background: var(--main-background-color, #f7f8fa);
+}
+
+.lt-library-sidebar-manager > h3 {
+    margin: 0 0 .25rem;
+    font-size: 1rem;
+}
+
+.lt-library-sidebar-manager > p {
+    margin: 0 0 .7rem;
+    color: var(--secondary-text-color, #68707b);
+}
+
+.lt-library-sidebar-manager__row {
+    display: grid;
+    grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 1fr) auto;
+    align-items: end;
+    gap: .7rem;
+    margin: .45rem 0;
+    padding: .55rem;
+    border: 1px solid var(--box-border-color, #e2e4e6);
+    border-radius: 6px;
+    background: var(--box-background, #fff);
+}
+
+.lt-library-sidebar-manager__row label {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    font-size: .85rem;
+    font-weight: 600;
+}
+
+.lt-library-sidebar-manager__row input {
+    width: 100%;
+}
+
 .lt-library-zone {
     list-style: none;
 }
@@ -373,6 +415,10 @@
     font-size: 1rem;
 }
 
+.lt-library-preview-section h3 [data-section-title] {
+    flex: 1;
+}
+
 .lt-library-preview-section h3 .lt-library-section-handle {
     margin-left: auto;
     border: 0;
@@ -527,6 +573,38 @@
     font-size: 1.1rem;
 }
 
+.leantimelib-sidebar-group {
+    margin: 0 0 1.15rem;
+}
+
+.leantimelib-sidebar-group > summary {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    color: #0874a7;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+}
+
+.leantimelib-sidebar-group > summary::-webkit-details-marker {
+    display: none;
+}
+
+.leantimelib-sidebar-group > summary::before {
+    content: '›';
+    font-size: 1.2rem;
+    transform: rotate(0deg);
+}
+
+.leantimelib-sidebar-group[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.leantimelib-sidebar-group [data-leantimelib-group-content] {
+    padding: .45rem 0 0 .4rem;
+}
+
 .lt-library-layout-editor__actions {
     display: flex;
     gap: .5rem;
@@ -545,7 +623,8 @@
 
 @media (max-width: 760px) {
     .lt-library-layout-editor__columns,
-    .lt-library-ticket__body {
+    .lt-library-ticket__body,
+    .lt-library-sidebar-manager__row {
         grid-template-columns: 1fr;
     }
 

@@ -105,7 +105,13 @@
                 .filter((item) => item.dataset.widgetKind !== 'tabs' && item.closest('[data-library-zone]')?.dataset.libraryZone === zone)
                 .map((item) => item.dataset.widgetId);
         };
-        return { main: ids('main'), auxiliary: ids('auxiliary'), sidebar: ids('sidebar'), hidden: ids('parked') };
+        const groups = {};
+        control.querySelectorAll('[data-section-children]').forEach((zone) => {
+            const id = zone.dataset.sectionChildren;
+            groups[id] = Array.from(control.querySelectorAll('[data-widget-kind][data-parent-section="' + CSS.escape(id) + '"]'))
+                .map((item) => item.dataset.widgetId);
+        });
+        return { main: ids('main'), auxiliary: ids('auxiliary'), sidebar: ids('sidebar'), hidden: ids('parked'), groups: groups };
     }
 
     async function saveProjectLayout(control, reset) {

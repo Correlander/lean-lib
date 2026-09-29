@@ -36,6 +36,7 @@ class TodoTabRegistry
         $layout = [
             'tabs' => array_column($this->getTabs($ticket), 'id'),
             'fields' => app(TodoFieldRegistry::class)->getLayout(is_object($ticket) ? (int) ($ticket->projectId ?? 0) : null),
+            'sidebarSections' => app(TodoSidebarSectionRegistry::class)->definitions(),
         ];
         $layoutJson = json_encode($layout, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR);
         echo '<li class="leantimelib-todo-layout-order" data-layout="'.htmlspecialchars($layoutJson, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'" hidden aria-hidden="true"></li>';

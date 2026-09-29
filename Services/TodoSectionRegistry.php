@@ -18,7 +18,6 @@ class TodoSectionRegistry
     private const PROJECT_OVERRIDES_PREFIX = 'projectsettings.';
     private const PROJECT_OVERRIDES_SUFFIX = '.leantimelib.todo.detail.sectionOverrides';
     private const PROJECT_ORDER_SUFFIX = '.leantimelib.todo.detail.sectionOrderOverride';
-
     public function __construct(private SettingService $settings) {}
 
     public function renderSections(array $params): void
@@ -61,7 +60,8 @@ class TodoSectionRegistry
         }
 
         $normalized = [];
-        $seen = [];
+        // Sidebar headers use a Library-owned ID prefix in this shared widget namespace.
+        $seen = array_fill_keys(TodoFieldRegistry::reservedWidgetIds(), true);
         foreach ($sections as $index => $section) {
             if (! is_array($section)) {
                 Log::error('Leantime Library skipped a malformed To-do section contribution.', ['index' => $index]);
@@ -72,7 +72,7 @@ class TodoSectionRegistry
             $icon = $section['icon'] ?? '';
             $render = $section['render'] ?? null;
             if (! is_string($id) || ! preg_match('/^[a-zA-Z][a-zA-Z0-9_-]{0,119}$/', $id)
-                || isset($seen[$id]) || ! is_string($label) || trim($label) === ''
+                || str_starts_with($id, 'sidebar-') || isset($seen[$id]) || ! is_string($label) || trim($label) === ''
                 || ! is_string($icon) || ! preg_match('/^[a-zA-Z0-9 _-]*$/', $icon)
                 || ! is_callable($render)) {
                 Log::error('Leantime Library skipped an invalid To-do section contribution.', ['section_id' => is_string($id) ? substr($id, 0, 120) : null, 'index' => $index]);

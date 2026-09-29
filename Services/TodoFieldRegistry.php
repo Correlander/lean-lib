@@ -9,11 +9,6 @@ class TodoFieldRegistry
 {
     private const SETTING = 'leantimelib.todo.detail.fieldLayout';
     private const PROJECT_SUFFIX = '.leantimelib.todo.detail.fieldLayout';
-    private const SECTION_WIDGETS = [
-        'organization' => ['label' => 'Organization', 'zone' => 'sidebar', 'kind' => 'sectionHeader', 'children' => ['type', 'project', 'milestone', 'sprint', 'related']],
-        'schedule' => ['label' => 'Schedule', 'zone' => 'sidebar', 'kind' => 'sectionHeader', 'children' => ['workStart', 'workEnd', 'plannedHours']],
-    ];
-
     private const FIELDS = [
         'headline' => ['label' => 'Title', 'zone' => 'main', 'selector' => '[name="headline"]'],
         'status' => ['label' => 'Status', 'zone' => 'main', 'selector' => '#status-select'],
@@ -36,7 +31,13 @@ class TodoFieldRegistry
         'plannedHours' => ['label' => 'Planned and remaining hours', 'zone' => 'sidebar', 'selector' => '[name="planHours"]'],
     ];
 
-    public function __construct(private SettingService $settings) {}
+    /** Stable IDs occupied by native detail controls and their section headers. */
+    public static function reservedWidgetIds(): array
+    {
+        return array_merge(array_keys(self::FIELDS), ['organization', 'schedule']);
+    }
+
+    public function __construct(private SettingService $settings, private TodoSidebarSectionRegistry $sidebarSections) {}
 
     public function fields(?int $projectId = null): array
     {
@@ -47,7 +48,13 @@ class TodoFieldRegistry
                 'kind' => 'sections', 'enabled' => $section['enabled'], 'defaultEnabled' => $section['defaultEnabled'],
             ];
         }
-        foreach (self::SECTION_WIDGETS as $id => $section) $fields[$id] = $section + ['icon' => '', 'enabled' => true, 'defaultEnabled' => true];
+        foreach ($this->sidebarSections->definitions() as $section) {
+            $fields[$section['id']] = [
+                'label' => $section['label'], 'icon' => $section['icon'], 'zone' => 'sidebar',
+                'kind' => 'sectionHeader', 'children' => $section['defaultChildren'] ?? [],
+                'enabled' => true, 'defaultEnabled' => true,
+            ];
+        }
         return $fields;
     }
 
@@ -81,6 +88,22 @@ class TodoFieldRegistry
                 if (! $alreadyPlaced) $layout[$targetZone][] = $id;
             }
         }
+        $layout['groups'] = [];
+        $groupMembership = [];
+        $hasSavedGroups = is_array($saved['groups'] ?? null);
+        if ($hasSavedGroups) {
+            foreach ($saved['groups'] as $sectionId => $childIds) {
+                if (! is_string($sectionId) || ! isset($available[$sectionId]) || ($available[$sectionId]['kind'] ?? '') !== 'sectionHeader' || ! is_array($childIds)) continue;
+                foreach ($childIds as $childId) {
+                    if (! is_string($childId) || ! isset($available[$childId]) || ($available[$childId]['zone'] ?? '') !== 'sidebar'
+                        || ($available[$childId]['kind'] ?? '') === 'sectionHeader'
+                        || (! in_array($childId, $layout['sidebar'], true) && ! in_array($childId, $layout['hidden'], true))
+                        || isset($groupMembership[$childId])) continue;
+                    $layout['groups'][$sectionId][] = $childId;
+                    $groupMembership[$childId] = $sectionId;
+                }
+            }
+        }
         $defaultOrder = ['organization', 'type', 'project', 'milestone', 'sprint', 'related', 'schedule', 'workStart', 'workEnd', 'plannedHours'];
         foreach (array_keys($available) as $id) if (! in_array($id, $defaultOrder, true)) $defaultOrder[] = $id;
         foreach ($defaultOrder as $id) {
@@ -91,14 +114,17 @@ class TodoFieldRegistry
                 $layout[$defaultZone][] = $id;
             }
         }
-        foreach (['organization' => ['type', 'project', 'milestone', 'sprint', 'related'], 'schedule' => ['workStart', 'workEnd', 'plannedHours']] as $header => $children) {
-            $savedSidebar = is_array($saved['sidebar'] ?? null) ? $saved['sidebar'] : [];
-            if (in_array($header, $savedSidebar, true) || ! in_array($header, $layout['sidebar'], true)) continue;
-            $layout['sidebar'] = array_values(array_diff($layout['sidebar'], [$header]));
-            $positions = array_map(static fn (string $child): int|false => array_search($child, $layout['sidebar'], true), $children);
-            $positions = array_values(array_filter($positions, static fn (int|false $position): bool => $position !== false));
-            $insertAt = $positions === [] ? count($layout['sidebar']) : min($positions);
-            array_splice($layout['sidebar'], $insertAt, 0, [$header]);
+        if (! $hasSavedGroups) {
+            foreach ($this->sidebarSections->definitions() as $section) {
+                $defaultChildren = $section['defaultChildren'] ?? [];
+                $sequence = array_merge($layout['sidebar'], $layout['hidden']);
+                foreach ($sequence as $childId) {
+                    if (in_array($childId, $defaultChildren, true) && isset($available[$childId]) && ! isset($groupMembership[$childId])) {
+                        $layout['groups'][$section['id']][] = $childId;
+                        $groupMembership[$childId] = $section['id'];
+                    }
+                }
+            }
         }
         return $layout;
     }
@@ -131,6 +157,19 @@ class TodoFieldRegistry
                 if (! $alreadyPlaced) $normalized[$targetZone][] = $id;
             }
         }
+        $normalized['groups'] = [];
+        $grouped = [];
+        foreach ($layout['groups'] ?? [] as $sectionId => $childIds) {
+            if (! is_string($sectionId) || ! isset($available[$sectionId]) || ($available[$sectionId]['kind'] ?? '') !== 'sectionHeader' || ! is_array($childIds)) continue;
+            foreach ($childIds as $id) {
+                if (! is_string($id) || ! isset($available[$id]) || ($available[$id]['zone'] ?? '') !== 'sidebar'
+                    || ($available[$id]['kind'] ?? '') === 'sectionHeader'
+                    || (! in_array($id, $normalized['sidebar'], true) && ! in_array($id, $normalized['hidden'], true))
+                    || isset($grouped[$id])) continue;
+                $normalized['groups'][$sectionId][] = $id;
+                $grouped[$id] = true;
+            }
+        }
         foreach ($available as $id => $field) {
             $placed = false;
             foreach ($zones as $zone) {
@@ -151,7 +190,8 @@ class TodoFieldRegistry
         }
         if ($projectId && $projectId > 0) {
             $key = 'projectsettings.'.$projectId.self::PROJECT_SUFFIX;
-            if ($normalized === $this->getLayout()) {
+            $defaultLayout = $this->getLayout();
+            if ($normalized === $defaultLayout) {
                 $this->settings->deleteSetting($key);
                 return true;
             }
