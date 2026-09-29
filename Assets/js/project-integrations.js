@@ -122,7 +122,12 @@
                 body: JSON.stringify({ tabs: tabs, fields: fields, reset: !!reset })
             });
             const result = await response.json();
-            if (!response.ok) throw new Error(result.error || result.message || 'Could not save this project layout.');
+            if (!response.ok) {
+                const details = result.errors && typeof result.errors === 'object'
+                    ? Object.entries(result.errors).flatMap(([field, messages]) => (Array.isArray(messages) ? messages : [messages]).map((message) => field + ': ' + message)).join(' ')
+                    : '';
+                throw new Error([result.error || result.message || 'Could not save this project layout.', details].filter(Boolean).join(' '));
+            }
             if (reset) window.location.reload();
             else if (status) status.textContent = 'Project To-do layout saved.';
         } catch (error) {

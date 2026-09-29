@@ -66,21 +66,28 @@ class ProjectIntegrations
     public function saveTodoLayout(Request $request, int $projectId)
     {
         $this->permissions->authorize(ProjectsPermissions::EDIT, $projectId);
-        $input = ValidationException::validate($request->only(['tabs', 'fields', 'reset']), [
-            'tabs' => ['required', 'array'],
-            'tabs.order' => ['required', 'array'],
-            'tabs.order.*' => ['required', 'string', 'max:120'],
-            'tabs.visible' => ['required', 'array'],
-            'tabs.visible.*' => ['required', 'string', 'max:120'],
-            'fields' => ['required', 'array'],
-            'fields.main' => ['required', 'array'],
-            'fields.main.*' => ['required', 'string', 'max:120'],
-            'fields.sidebar' => ['required', 'array'],
-            'fields.sidebar.*' => ['required', 'string', 'max:120'],
-            'fields.hidden' => ['required', 'array'],
-            'fields.hidden.*' => ['required', 'string', 'max:120'],
-            'reset' => ['nullable', 'boolean'],
-        ]);
+        try {
+            $input = ValidationException::validate($request->only(['tabs', 'fields', 'reset']), [
+                'tabs' => ['required', 'array'],
+                'tabs.order' => ['present', 'array'],
+                'tabs.order.*' => ['required', 'string', 'max:120'],
+                'tabs.visible' => ['present', 'array'],
+                'tabs.visible.*' => ['required', 'string', 'max:120'],
+                'fields' => ['required', 'array'],
+                'fields.main' => ['present', 'array'],
+                'fields.main.*' => ['required', 'string', 'max:120'],
+                'fields.sidebar' => ['present', 'array'],
+                'fields.sidebar.*' => ['required', 'string', 'max:120'],
+                'fields.hidden' => ['present', 'array'],
+                'fields.hidden.*' => ['required', 'string', 'max:120'],
+                'reset' => ['nullable', 'boolean'],
+            ]);
+        } catch (ValidationException $exception) {
+            return response()->json([
+                'error' => $exception->getMessage(),
+                'errors' => $exception->getErrorData(),
+            ], 422);
+        }
 
         if (! filter_var($input['reset'] ?? false, FILTER_VALIDATE_BOOLEAN) && $input['tabs']['visible'] === []) {
             return response()->json(['error' => 'Keep at least one To-do tab visible.'], 422);
