@@ -76,7 +76,7 @@ class TodoLayoutEditor
         }
         $html .= '</div>';
         if ($global) $html .= '<button type="button" class="lt-library-add-section" data-sidebar-section-add><span aria-hidden="true">+</span> Add sidebar section</button>';
-        $html .= '</aside></div></div><aside class="lt-library-ticket__parked"><header><strong>Parked Widgets</strong><small>Hidden from the To-do modal</small></header><ol class="lt-library-zone" data-library-zone="parked">';
+        $html .= '</aside><aside class="lt-library-ticket__parked"><header><strong>Parked Widgets</strong><small>Hidden from the To-do modal</small></header><ol class="lt-library-zone" data-library-zone="parked">';
         foreach ($layout['hidden'] as $id) {
             if (isset($sectionMap[$id])) {
                 $children = array_values(array_intersect($layout['sidebar'], $layout['groups'][$id] ?? []));
@@ -88,7 +88,7 @@ class TodoLayoutEditor
         foreach ($allTabs as $tab) {
             if (! $tab['enabled']) $html .= $this->widget('tabs', $tab['id'], $tab['label'], $tab['icon'], 'parked', $tab['builtin'] ? 'Leantime tab' : 'Plugin tab', $global, $canEdit);
         }
-        $html .= '</ol></aside></div>';
+        $html .= '</ol></aside></div></div>';
         if ($global) $html .= '<p class="lt-library-workspace__hint">Changes save automatically. Projects use this layout unless they have a project override. Save controls stay fixed so a To-do can always be saved.</p>';
         if (! $global && $canEdit) $html .= '<div class="lt-library-layout-editor__actions"><button type="button" class="btn btn-primary" data-project-layout-save>Save project layout</button></div>';
         $html .= '</section>';
