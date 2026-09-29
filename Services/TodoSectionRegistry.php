@@ -17,9 +17,8 @@ class TodoSectionRegistry
 
     public function __construct(private SettingService $settings) {}
 
-    public function renderSections(string $event, array $payload): void
+    public function renderSections(array $params): void
     {
-        $params = $payload[0] ?? [];
         if (! is_array($params)) return;
         $ticket = $params['ticket'] ?? null;
 
