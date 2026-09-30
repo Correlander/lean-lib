@@ -17,7 +17,7 @@ class SettingsPageRenderer
      * select, secret, action, and custom. Custom content is executable provider
      * code and must never contain user-authored templates or untrusted HTML.
      *
-     * @param array{title?:string,description?:string,supportUrl?:string,blocks?:array} $definition
+     * @param array{title?:string,description?:string,supportUrl?:string,headerActions?:callable,blocks?:array} $definition
      * @param array<string,mixed> $values Current provider-owned values. Secrets should be booleans such as `apiKeyConfigured`.
      * @param array<string,string|array> $errors Provider-generated validation errors, keyed by field ID.
      */
@@ -26,7 +26,11 @@ class SettingsPageRenderer
         $normalized = $this->normalize($definition);
         if (is_string($definition['pluginFolder'] ?? null)) {
             $metadata = array_filter($this->readPluginMetadata($definition['pluginFolder']), static fn ($value): bool => $value !== null);
-            $normalized = array_replace($normalized, $metadata);
+            foreach ($metadata as $key => $value) {
+                if (! array_key_exists($key, $definition)) {
+                    $normalized[$key] = $value;
+                }
+            }
         }
 
         return view()->file(__DIR__.'/../Templates/shared-settings-page.blade.php', [
@@ -89,11 +93,19 @@ class SettingsPageRenderer
         if ($supportUrl !== null && (! is_string($supportUrl) || ! $this->isWebUrl($supportUrl))) {
             throw new \InvalidArgumentException('Support URL must be an absolute URL.');
         }
+        $headerActions = $definition['headerActions'] ?? null;
+        if ($headerActions !== null && ! is_callable($headerActions)) {
+            throw new \InvalidArgumentException('Custom settings header actions must be a trusted render callback.');
+        }
 
         return [
             'title' => trim($title),
             'description' => is_string($definition['description'] ?? null) ? trim($definition['description']) : '',
             'supportUrl' => $supportUrl,
+            'headerActions' => $headerActions,
+            'headerClass' => is_string($definition['headerClass'] ?? null) ? trim($definition['headerClass']) : '',
+            'headerCopyClass' => is_string($definition['headerCopyClass'] ?? null) ? trim($definition['headerCopyClass']) : '',
+            'sectionClass' => is_string($definition['sectionClass'] ?? null) ? trim($definition['sectionClass']) : '',
             'version' => is_string($definition['version'] ?? null) ? trim($definition['version']) : '',
             'author' => is_string($definition['author'] ?? null) ? trim($definition['author']) : '',
             'homepage' => is_string($definition['homepage'] ?? null) && $this->isWebUrl($definition['homepage']) ? $definition['homepage'] : '',

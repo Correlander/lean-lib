@@ -1,12 +1,14 @@
-<section class="leantimelib-shared-settings" data-settings-api-version="1">
-    <header class="leantimelib-shared-settings__header">
-        <div>
+<section class="leantimelib-shared-settings {{ $definition['sectionClass'] }}" data-settings-api-version="1">
+    <header class="leantimelib-shared-settings__header {{ $definition['headerClass'] }}">
+        <div class="{{ $definition['headerCopyClass'] }}">
             <h1>{{ $definition['title'] }}</h1>
             @if ($definition['description'] !== '')
                 <p>{{ $definition['description'] }}</p>
             @endif
         </div>
-        @if ($definition['supportUrl'])
+        @if ($definition['headerActions'])
+            {!! ($definition['headerActions'])() !!}
+        @elseif ($definition['supportUrl'])
             <a href="{{ $definition['supportUrl'] }}" target="_blank" rel="noopener noreferrer">Support</a>
         @endif
     </header>
@@ -20,9 +22,9 @@
 
     @foreach ($definition['blocks'] as $block)
         @if ($block['type'] === 'title')
-            <h2>{{ $block['text'] ?? '' }}</h2>
+            <h2 class="leantimelib-shared-settings__title {{ $block['class'] ?? '' }}">{{ $block['text'] ?? '' }}</h2>
         @elseif ($block['type'] === 'description')
-            <p class="leantimelib-shared-settings__description">{{ $block['text'] ?? '' }}</p>
+            <p class="leantimelib-shared-settings__description {{ $block['class'] ?? '' }}">{{ $block['text'] ?? '' }}</p>
         @elseif ($block['type'] === 'custom')
             {!! ($block['render'])($values, $errors) !!}
         @elseif ($block['type'] === 'action')
@@ -35,9 +37,9 @@
                 $rawValue = $values[$id] ?? ($block['default'] ?? '');
                 $value = is_scalar($rawValue) ? $rawValue : '';
             @endphp
-            <div class="leantimelib-shared-settings__field" data-field-type="{{ $block['type'] }}">
+            <div class="leantimelib-shared-settings__field leantimelib-shared-settings__field--{{ $block['type'] }}" data-field-type="{{ $block['type'] }}">
                 @if ($block['type'] === 'checkbox')
-                    <label>
+                    <label class="{{ $block['class'] ?? '' }}">
                         <input type="checkbox" name="{{ $block['name'] ?? $id }}" value="1" @if (filter_var($value, FILTER_VALIDATE_BOOLEAN)) checked @endif>
                         <span><strong>{{ $block['label'] }}</strong>@if (!empty($block['help'])) <small>{{ $block['help'] }}</small>@endif</span>
                     </label>

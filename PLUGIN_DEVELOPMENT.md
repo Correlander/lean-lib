@@ -32,7 +32,7 @@ $this->tpl->assign('settingsContent', $settingsFragment);
 return $this->tpl->display('myplugin.settings');
 ```
 
-The renderer returns a Blade-rendered section, not a full page, form, or route. The provider places it in its own view, wraps it in its own form (with its own CSRF token), validates the submission, and saves settings. Supported block types are `title`, `description`, `checkbox`, `text`, `url`, `number`, `select`, `secret`, `action`, and `custom`. A secret value is never rendered; pass `<fieldId>Configured` as a boolean to show a saved-key placeholder. `custom` accepts a trusted provider callback and is for provider code only, never user-authored templates or HTML.
+The renderer returns a Blade-rendered section, not a full page, form, or route. The provider places it in its own view, wraps it in its own form (with its own CSRF token), validates the submission, and saves settings. Supported block types are `title`, `description`, `checkbox`, `text`, `url`, `number`, `select`, `secret`, `action`, and `custom`. A secret value is never rendered; pass `<fieldId>Configured` as a boolean to show a saved-key placeholder. `custom` accepts a trusted provider callback and is for provider code only, never user-authored templates or HTML. A page can also provide trusted `headerActions` for provider-specific controls while keeping title, description, and Composer metadata in the shared header.
 
 The Library autoloader must be available for the route that invokes this class. Use feature detection and keep a provider fallback if the Library is optional. Do not call it from `register.php` or assume plugin filesystem adjacency makes classes available.
 

@@ -18,8 +18,43 @@
 .leantimelib-shared-settings__metadata {
     display: flex;
     flex-wrap: wrap;
+    justify-content: flex-end;
     gap: .75rem;
     font-size: .875em;
+}
+
+.lt-library-settings-content > .lt-library-settings-section-title {
+    margin: 1.3rem 0 .25rem;
+    padding-bottom: .65rem;
+    border-bottom: 1px solid var(--box-border-color, #d9d9d9);
+    font-size: 1.25rem;
+}
+
+.lt-library-settings-content > .lt-library-settings-section-title:first-of-type {
+    margin-top: 1rem;
+}
+
+.lt-library-settings-content > .lt-library-settings-section-description {
+    max-width: 70rem;
+    margin: 0 0 .8rem;
+    color: var(--secondary-text-color, #68707b);
+}
+
+.lt-library-settings-content > .lt-library-settings-section-title--gui {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+}
+
+.lt-library-settings-content > .lt-library-workspace__hint {
+    margin: -.25rem 0 .8rem;
+}
+
+.lt-library-settings-content .leantimelib-shared-settings__field--checkbox {
+    margin: .55rem 0;
+}
+
+.lt-library-settings-content .lt-library-preference {
+    margin: 0;
 }
 
 .leantimelib-shared-settings__field {
@@ -830,6 +865,8 @@
     width: 100%;
     height: auto;
     margin: 0;
+    appearance: none;
+    -webkit-appearance: none;
     padding: .35rem .65rem;
     border: 0 !important;
     border-radius: 0 !important;
@@ -839,6 +876,17 @@
     color: inherit;
     font: inherit;
     font-weight: 700;
+}
+
+/* Leantime's global input rules can style the title input as its own rounded
+ * field. Keep the icon and title inside the single editor control instead. */
+.lt-library-preview-section h3 .lt-library-section-editor > input.lt-library-section-title,
+.lt-library-preview-section h3 .lt-library-section-editor > input.lt-library-section-title:focus {
+    border: 0 !important;
+    border-radius: 0 !important;
+    outline: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
 }
 
 .lt-library-preview-section h3 input.lt-library-section-title:focus {

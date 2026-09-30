@@ -35,6 +35,8 @@ The To-do tab and sidebar section contributions can be arranged in the shared To
 
 Provider settings pages can use the shared `SettingsPageRenderer` for common fields while retaining their existing routes and save logic. Editable GUI surfaces can register through `plugins.leantimelib.gui.surfaces`. See [Plugin development](PLUGIN_DEVELOPMENT.md) for the versioned API and examples.
 
+The Library settings page uses the same renderer for its title, metadata, standard options, and section descriptions. Its draggable GUI editor remains a Library-owned custom block.
+
 Detailed contribution contracts and examples can live in the [GitHub Wiki](https://github.com/Correlander/leantime-lib/wiki) as they are documented. The README will keep the overview and compact contribution index.
 
 ## Other options

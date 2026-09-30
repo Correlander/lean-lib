@@ -171,24 +171,56 @@ class Settings extends Controller
 
     private function assignPageData(?string $error = null): void
     {
-        $this->tpl->assign('tabs', $this->registry->getTabs(null, true));
-        $this->tpl->assign('sections', $this->sectionRegistry->getSections(null, [], true));
+        $tabs = $this->registry->getTabs(null, true);
+        $sections = $this->sectionRegistry->getSections(null, [], true);
         $surfaces = $this->guiSurfaces->getSurfaces();
         foreach ($surfaces as &$surface) {
             $surface['editorHtml'] = $this->guiSurfaces->renderEditor($surface, ['scope' => 'instance']);
         }
         unset($surface);
-        $this->tpl->assign('guiSurfaces', $surfaces);
-        $this->tpl->assign('hideExploreApps', filter_var(
+        $hideExploreApps = filter_var(
             $this->settings->getSetting('leantimelib.ui.hideExploreApps', '0'),
             FILTER_VALIDATE_BOOLEAN
-        ));
+        );
         $fastOnboarding = $this->settings->getSetting('leantimelib.ui.fastOnboarding', null);
         if ($fastOnboarding === null || $fastOnboarding === false) {
             $fastOnboarding = filter_var($this->settings->getSetting('leantimelib.ui.hideOnboardingSteps', '0'), FILTER_VALIDATE_BOOLEAN)
                 || filter_var($this->settings->getSetting('leantimelib.ui.disableStarterProject', '0'), FILTER_VALIDATE_BOOLEAN);
         }
-        $this->tpl->assign('fastOnboarding', filter_var($fastOnboarding, FILTER_VALIDATE_BOOLEAN));
+        $fastOnboarding = filter_var($fastOnboarding, FILTER_VALIDATE_BOOLEAN);
+
+        $pluginTabs = array_filter($tabs, static fn ($tab) => ! $tab['builtin']);
+        $pluginSections = array_filter($sections, static fn ($section) => ! $section['builtin']);
+        $guiEditorHtml = view()->file(__DIR__.'/../Templates/gui-settings-editor.blade.php', [
+            'guiSurfaces' => $surfaces,
+            'hasContributions' => count($pluginTabs) > 0 || count($pluginSections) > 0,
+        ])->render();
+        $headerActions = static fn (): string => view()->file(__DIR__.'/../Templates/settings-header-actions.blade.php')->render();
+
+        $settingsContent = app(\Leantime\Plugins\LeantimeLib\Services\SettingsPageRenderer::class)->render([
+            'pluginFolder' => 'LeantimeLib',
+            'title' => 'lean-library',
+            'description' => 'One place to manage how enabled Leantime plugins and native interface components fit together.',
+            'supportUrl' => null,
+            'headerActions' => $headerActions,
+            'headerClass' => 'lt-library-page-heading',
+            'headerCopyClass' => 'lt-library-page-heading__copy',
+            'sectionClass' => 'lt-library-settings-content',
+            'blocks' => [
+                ['type' => 'title', 'text' => 'General improvements', 'class' => 'lt-library-settings-section-title'],
+                ['type' => 'description', 'text' => 'Optional changes to Leantime’s navigation and onboarding.', 'class' => 'lt-library-settings-section-description'],
+                ['type' => 'checkbox', 'id' => 'hideExploreApps', 'label' => 'Make My Apps the only Apps page', 'help' => 'Hide Explore Apps and send the Apps menu directly to My Apps.', 'class' => 'lt-library-preference'],
+                ['type' => 'checkbox', 'id' => 'fastOnboarding', 'label' => 'Fast Onboarding', 'help' => 'Skip appearance and schedule steps, avoid creating a starter “My Project,” and let users adjust their schedule later in Profile settings.', 'class' => 'lt-library-preference'],
+                ['type' => 'title', 'text' => 'GUI customization', 'class' => 'lt-library-settings-section-title lt-library-settings-section-title--gui'],
+                ['type' => 'description', 'text' => 'Arrange native interface parts and plugin contributions through one shared layout. Plugins provide their widgets; the Library controls where they appear and which ones are visible. If the editor looks cramped or squished, press Ctrl + - to zoom out.', 'class' => 'lt-library-settings-section-description'],
+                ['type' => 'description', 'text' => 'Projects use this layout unless they have a project override.', 'class' => 'lt-library-workspace__hint'],
+                ['type' => 'custom', 'render' => static fn (array $values = [], array $errors = []): string => $guiEditorHtml],
+            ],
+        ], [
+            'hideExploreApps' => $hideExploreApps,
+            'fastOnboarding' => $fastOnboarding,
+        ]);
+        $this->tpl->assign('settingsContent', $settingsContent);
         $this->tpl->assign('error', $error);
     }
 }
