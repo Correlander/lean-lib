@@ -1,14 +1,14 @@
 {
-  "/library-settings.js": "/library-settings.js?v=0.15.0",
-  "library-settings.js": "/library-settings.js?v=0.15.0",
-  "/library-settings.css": "/library-settings.css?v=0.15.0",
-  "library-settings.css": "/library-settings.css?v=0.15.0",
-  "/project-integrations.js": "/project-integrations.js?v=0.15.0",
-  "project-integrations.js": "/project-integrations.js?v=0.15.0",
-  "/project-integrations.css": "/project-integrations.css?v=0.15.0",
-  "project-integrations.css": "/project-integrations.css?v=0.15.0",
-  "/todo-layout.js": "/todo-layout.js?v=0.15.0",
-  "todo-layout.js": "/todo-layout.js?v=0.15.0",
-  "/app-preferences.js": "/app-preferences.js?v=0.15.0",
-  "app-preferences.js": "/app-preferences.js?v=0.15.0"
+  "/library-settings.js": "/library-settings.js?v=0.16.0",
+  "library-settings.js": "/library-settings.js?v=0.16.0",
+  "/library-settings.css": "/library-settings.css?v=0.16.0",
+  "library-settings.css": "/library-settings.css?v=0.16.0",
+  "/project-integrations.js": "/project-integrations.js?v=0.16.0",
+  "project-integrations.js": "/project-integrations.js?v=0.16.0",
+  "/project-integrations.css": "/project-integrations.css?v=0.16.0",
+  "project-integrations.css": "/project-integrations.css?v=0.16.0",
+  "/todo-layout.js": "/todo-layout.js?v=0.16.0",
+  "todo-layout.js": "/todo-layout.js?v=0.16.0",
+  "/app-preferences.js": "/app-preferences.js?v=0.16.0",
+  "app-preferences.js": "/app-preferences.js?v=0.16.0"
 }

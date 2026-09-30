@@ -5,6 +5,12 @@
 @endif
 
 @if (!empty($guiSurfaces))
+    @if (!empty($editorTitle))
+        <header class="leantimelib-gui-editor-heading">
+            <h3>{{ $editorTitle }}</h3>
+            @if (!empty($editorDescription)) <p>{{ $editorDescription }}</p> @endif
+        </header>
+    @endif
     <label class="lt-library-editor-selector">Editing
         <select aria-label="Choose interface area to customize" data-gui-surface-selector>
             @foreach ($guiSurfaces as $index => $surface)

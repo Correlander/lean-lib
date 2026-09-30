@@ -29,6 +29,8 @@ class ProjectIntegrationRegistry
             'guiSurfaces' => $guiSurfaces,
             'hasContributions' => true,
             'showContributionMessage' => false,
+            'editorTitle' => 'GUI Customization',
+            'editorDescription' => 'Override the instance-level GUI customization for this project.',
         ])->render();
         $panels = $this->getPanels($projectId);
         if ($panels === []) return $html.'<p>No plugins have registered project integrations.</p>';
@@ -38,11 +40,23 @@ class ProjectIntegrationRegistry
             $label = $panel['label'];
             $render = $panel['render'];
             try {
-                $content = $render($projectId);
+                if (isset($panel['view'])) {
+                    $viewData = is_callable($panel['data'] ?? null)
+                        ? ($panel['data'])($projectId)
+                        : ($panel['data'] ?? []);
+                    if (! is_array($viewData)) throw new \UnexpectedValueException('Project integration view data must be an array.');
+                    $content = view($panel['view'], $viewData)->render();
+                } else {
+                    $content = $render($projectId);
+                }
                 if (is_string($content)) {
                     $title = htmlspecialchars($label, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
                     $html .= '<section class="leantimelib-integration-panel" data-integration="'.htmlspecialchars($id, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'">';
-                    $html .= '<h3>'.$title.'</h3>'.$content.'</section>';
+                    $description = $panel['description'] !== ''
+                        ? '<p class="leantimelib-integration-panel__description">'.htmlspecialchars($panel['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'</p>'
+                        : '';
+                    $html .= '<header class="leantimelib-integration-panel__header"><h3>'.$title.'</h3>'.$description.'</header>';
+                    $html .= '<div class="leantimelib-integration-panel__content">'.$content.'</div></section>';
                 }
             } catch (Throwable $exception) {
                 Log::error('Leantime Library integration panel failed.', [
@@ -83,9 +97,15 @@ class ProjectIntegrationRegistry
             }
             $id = $panel['id'] ?? null;
             $label = $panel['label'] ?? null;
+            $description = $panel['description'] ?? '';
             $render = $panel['render'] ?? null;
+            $viewName = $panel['view'] ?? null;
+            $data = $panel['data'] ?? [];
+            $hasView = is_string($viewName) && trim($viewName) !== ''
+                && (is_array($data) || is_callable($data));
             if (! is_string($id) || ! preg_match('/^[a-zA-Z][a-zA-Z0-9_-]{0,79}$/', $id)
-                || isset($seen[$id]) || ! is_string($label) || trim($label) === '' || ! is_callable($render)) {
+                || isset($seen[$id]) || ! is_string($label) || trim($label) === ''
+                || ! is_string($description) || (! is_callable($render) && ! $hasView)) {
                 Log::error('Leantime Library skipped an invalid project integration contribution.', [
                     'panel_id' => is_string($id) ? substr($id, 0, 80) : null,
                     'index' => $index,
@@ -93,7 +113,8 @@ class ProjectIntegrationRegistry
                 continue;
             }
             $seen[$id] = true;
-            $normalized[] = ['id' => $id, 'label' => trim($label), 'render' => $render,
+            $normalized[] = ['id' => $id, 'label' => trim($label), 'description' => trim($description), 'render' => $render,
+                'view' => $hasView ? trim($viewName) : null, 'data' => $data,
                 'order' => is_int($panel['order'] ?? null) ? $panel['order'] : 100];
         }
 

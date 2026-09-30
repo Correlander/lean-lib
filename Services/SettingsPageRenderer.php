@@ -13,8 +13,8 @@ class SettingsPageRenderer
     /**
      * Render a settings page definition as safe HTML.
      *
-     * Supported block types are title, description, checkbox, text, url, number,
-     * select, secret, action, and custom. Custom content is executable provider
+     * Supported block types are section, title, description, checkbox, text, url,
+     * number, select, secret, action, and custom. Custom content is executable provider
      * code and must never contain user-authored templates or untrusted HTML.
      *
      * @param array{title?:string,description?:string,supportUrl?:string,headerActions?:callable,blocks?:array} $definition
@@ -57,7 +57,7 @@ class SettingsPageRenderer
                 throw new \InvalidArgumentException('Every settings page block must have a type.');
             }
             $type = $block['type'];
-            if (! in_array($type, ['title', 'description', 'checkbox', 'text', 'url', 'number', 'select', 'secret', 'action', 'custom'], true)) {
+            if (! in_array($type, ['section', 'title', 'description', 'checkbox', 'text', 'url', 'number', 'select', 'secret', 'action', 'custom'], true)) {
                 throw new \InvalidArgumentException('Unsupported settings page block type at index '.$index.'.');
             }
 

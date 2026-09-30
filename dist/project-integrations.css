@@ -5,7 +5,15 @@
     visibility: visible;
     padding: 1rem;
 }
-.leantimelib-integration-panel { margin: 1rem 0 1.5rem; }
+.leantimelib-integration-panel { margin: 1.5rem 0 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--box-border-color, #d9d9d9); }
+.leantimelib-integration-panel:last-of-type { border-bottom: 0; }
+.leantimelib-integration-panel__header { margin: 0 0 1rem; padding: 0 0 .75rem; border-bottom: 1px solid var(--box-border-color, #d9d9d9); }
+.leantimelib-integration-panel__header h3 { margin: 0; }
+.leantimelib-integration-panel__description { margin: .3rem 0 0; color: var(--secondary-text-color, #777); font-size: .9em; }
+.leantimelib-integration-panel__content > :first-child { margin-top: 0; }
+.leantimelib-gui-editor-heading { margin: 0 0 1rem; padding: 0 0 .75rem; border-bottom: 1px solid var(--box-border-color, #d9d9d9); }
+.leantimelib-gui-editor-heading h3 { margin: 0; }
+.leantimelib-gui-editor-heading p { margin: .3rem 0 0; color: var(--secondary-text-color, #777); font-size: .9em; }
 .leantimelib-integrations-heading { margin: 0 0 1.25rem; padding-bottom: .75rem; border-bottom: 1px solid var(--box-border-color, #d9d9d9); }
 .leantimelib-integrations-heading h3 { margin: 0 0 .25rem; }
 .leantimelib-integrations-heading p { margin: 0; color: var(--secondary-text-color, #777); }

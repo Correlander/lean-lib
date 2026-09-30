@@ -1,13 +1,13 @@
 <section class="leantimelib-shared-settings {{ $definition['sectionClass'] }}" data-settings-api-version="1">
     <header class="leantimelib-shared-settings__header {{ $definition['headerClass'] }}">
-        <div class="{{ $definition['headerCopyClass'] }}">
+        <div class="leantimelib-shared-settings__header-copy {{ $definition['headerCopyClass'] }}">
             <h1>{{ $definition['title'] }}</h1>
             @if ($definition['description'] !== '')
                 <p>{{ $definition['description'] }}</p>
             @endif
         </div>
         @if ($definition['headerActions'])
-            {!! ($definition['headerActions'])() !!}
+            <div class="leantimelib-shared-settings__header-actions">{!! ($definition['headerActions'])() !!}</div>
         @elseif ($definition['supportUrl'])
             <a href="{{ $definition['supportUrl'] }}" target="_blank" rel="noopener noreferrer">Support</a>
         @endif
@@ -21,7 +21,12 @@
     @endif
 
     @foreach ($definition['blocks'] as $block)
-        @if ($block['type'] === 'title')
+        @if ($block['type'] === 'section')
+            <section class="leantimelib-shared-settings__section">
+                <h2 class="{{ $block['class'] ?? '' }}">{{ $block['text'] ?? '' }}</h2>
+                @if (!empty($block['description'])) <p class="{{ $block['class'] ?? '' }}">{{ $block['description'] }}</p> @endif
+            </section>
+        @elseif ($block['type'] === 'title')
             <h2 class="leantimelib-shared-settings__title {{ $block['class'] ?? '' }}">{{ $block['text'] ?? '' }}</h2>
         @elseif ($block['type'] === 'description')
             <p class="leantimelib-shared-settings__description {{ $block['class'] ?? '' }}">{{ $block['text'] ?? '' }}</p>

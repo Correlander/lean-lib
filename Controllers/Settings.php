@@ -14,6 +14,8 @@ use Leantime\Plugins\LeantimeLib\Services\TodoFieldRegistry;
 use Leantime\Plugins\LeantimeLib\Services\TodoSidebarSectionRegistry;
 use Leantime\Plugins\LeantimeLib\Services\TodoTabRegistry;
 use Leantime\Plugins\LeantimeLib\Services\GuiSurfaceRegistry;
+use Leantime\Plugins\LeantimeLib\Services\SettingsPage;
+use Leantime\Plugins\LeantimeLib\Services\SettingsPageBlock;
 
 class Settings extends Controller
 {
@@ -198,26 +200,19 @@ class Settings extends Controller
         ])->render();
         $headerActions = static fn (): string => view()->file(__DIR__.'/../Templates/settings-header-actions.blade.php')->render();
 
-        $settingsContent = app(\Leantime\Plugins\LeantimeLib\Services\SettingsPageRenderer::class)->render([
-            'pluginFolder' => 'LeantimeLib',
-            'title' => 'lean-library',
-            'description' => 'One place to manage how enabled Leantime plugins and native interface components fit together.',
-            'supportUrl' => null,
-            'headerActions' => $headerActions,
-            'headerClass' => 'lt-library-page-heading',
-            'headerCopyClass' => 'lt-library-page-heading__copy',
-            'sectionClass' => 'lt-library-settings-content',
-            'blocks' => [
-                ['type' => 'title', 'text' => 'General improvements', 'class' => 'lt-library-settings-section-title'],
-                ['type' => 'description', 'text' => 'Optional changes to Leantime’s navigation and onboarding.', 'class' => 'lt-library-settings-section-description'],
-                ['type' => 'checkbox', 'id' => 'hideExploreApps', 'label' => 'Make My Apps the only Apps page', 'help' => 'Hide Explore Apps and send the Apps menu directly to My Apps.', 'class' => 'lt-library-preference'],
-                ['type' => 'checkbox', 'id' => 'fastOnboarding', 'label' => 'Fast Onboarding', 'help' => 'Skip appearance and schedule steps, avoid creating a starter “My Project,” and let users adjust their schedule later in Profile settings.', 'class' => 'lt-library-preference'],
-                ['type' => 'title', 'text' => 'GUI customization', 'class' => 'lt-library-settings-section-title lt-library-settings-section-title--gui'],
-                ['type' => 'description', 'text' => 'Arrange native interface parts and plugin contributions through one shared layout. Plugins provide their widgets; the Library controls where they appear and which ones are visible. If the editor looks cramped or squished, press Ctrl + - to zoom out.', 'class' => 'lt-library-settings-section-description'],
-                ['type' => 'description', 'text' => 'Projects use this layout unless they have a project override.', 'class' => 'lt-library-workspace__hint'],
-                ['type' => 'custom', 'render' => static fn (array $values = [], array $errors = []): string => $guiEditorHtml],
-            ],
-        ], [
+        $settingsContent = SettingsPage::forPlugin('LeantimeLib')
+            ->title('lean-library')
+            ->description('One place to manage how enabled Leantime plugins and native interface components fit together.')
+            ->headerActions($headerActions)
+            ->insert(
+                SettingsPageBlock::section('General improvements', 'Optional changes to Leantime’s navigation and onboarding.'),
+                SettingsPageBlock::checkbox('hideExploreApps', 'Make My Apps the only Apps page', 'Hide Explore Apps and send the Apps menu directly to My Apps.'),
+                SettingsPageBlock::checkbox('fastOnboarding', 'Fast Onboarding', 'Skip appearance and schedule steps, avoid creating a starter “My Project,” and let users adjust their schedule later in Profile settings.'),
+                SettingsPageBlock::section('GUI customization', 'Arrange native interface parts and plugin contributions through one shared layout. Plugins provide their widgets; the Library controls where they appear and which ones are visible. If the editor looks cramped or squished, press Ctrl + - to zoom out.'),
+                SettingsPageBlock::description('Projects use this layout unless they have a project override.'),
+                SettingsPageBlock::custom(static fn (array $values = [], array $errors = []): string => $guiEditorHtml)
+            )
+            ->render([
             'hideExploreApps' => $hideExploreApps,
             'fastOnboarding' => $fastOnboarding,
         ]);

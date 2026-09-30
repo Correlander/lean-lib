@@ -16,7 +16,7 @@ When updating, copy the whole plugin folder, including `dist/` and `dist/mix-man
 
 The **GUI customization** editor is designed as a shared home for visual previews and layout controls as more interfaces are supported. Today, its preview represents the To-do modal: administrators can arrange tabs, fields, sidebar groups, and plugin additions, or park items to hide them. Save controls remain fixed, and changes save automatically. **Reset to defaults** restores the standard layout.
 
-Projects inherit the instance layout. In **Project Settings → Integrations**, enable **Override Library To-do layout for this project** to customize one project's To-do modal. Disable the override or choose **Use Library defaults** to restore inheritance. Sidebar headers and icons are instance-wide; project overrides can move and group available sidebar items.
+Projects inherit the instance layout. In **Project Settings → Integrations**, enable **Override instance To-do layout for this project** to customize one project's To-do modal. Disable the override or choose **Use instance defaults** to restore inheritance. Sidebar headers and icons are instance-wide; project overrides can move and group available sidebar items.
 
 <!-- Add a screenshot of this editor when a representative image is available. -->
 
@@ -33,7 +33,7 @@ Plugins use Leantime's event filters to register additions with the Library. Eac
 
 The To-do tab and sidebar section contributions can be arranged in the shared To-do layout editor. Project integration panels use the order set in the Library’s **Project integrations** GUI editor; an individual project can enable an order-only override in its Integrations settings.
 
-Provider settings pages can use the shared `SettingsPageRenderer` for common fields while retaining their existing routes and save logic. Editable GUI surfaces can register through `plugins.leantimelib.gui.surfaces`. See [Plugin development](PLUGIN_DEVELOPMENT.md) for the versioned API and examples.
+Provider settings pages use `SettingsPage` and `SettingsPageBlock` for standard page sections and fields, while keeping their existing routes and save logic. Project integration panels get a shared title/description/divider/content frame. Editable GUI surfaces register through `plugins.leantimelib.gui.surfaces`. See [Plugin development](PLUGIN_DEVELOPMENT.md) for examples.
 
 The Library settings page uses the same renderer for its title, metadata, standard options, and section descriptions. Its draggable GUI editor remains a Library-owned custom block.
 

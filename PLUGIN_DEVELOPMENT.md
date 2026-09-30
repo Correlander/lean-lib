@@ -4,37 +4,47 @@ This page describes the first shared UI contracts provided by lean-library. Each
 
 ## Shared plugin settings page
 
-A provider keeps its existing settings controller/URL. When that route is rendered, it can use `SettingsPageRenderer` for common blocks. This is a runtime dependency on lean-library for that route; provider bootstrap and unrelated backend routes do not need to call the renderer.
+A provider keeps its existing settings controller/URL. When that route is rendered, use `SettingsPage` and `SettingsPageBlock` to declare the common settings blocks. This is a runtime dependency on lean-library for that route; provider bootstrap and unrelated backend routes do not need to call the renderer.
 
 ```php
-use Leantime\Plugins\LeantimeLib\Services\SettingsPageRenderer;
+use Leantime\Plugins\LeantimeLib\Services\SettingsPage;
+use Leantime\Plugins\LeantimeLib\Services\SettingsPageBlock;
 
-$rendererClass = SettingsPageRenderer::class;
-if (! class_exists($rendererClass) || $rendererClass::API_VERSION !== 1) {
-    // Render the provider's own fallback view or show a clear setup message.
-    return $this->tpl->display('myplugin.settings');
-}
-
-$settingsFragment = app()->make($rendererClass)->render([
-    'pluginFolder' => 'MyPlugin', // Reads name, description, version, authors, homepage, and support from composer.json.
-    'blocks' => [
-        ['type' => 'title', 'text' => 'Connection'],
-        ['type' => 'url', 'id' => 'endpoint', 'label' => 'API endpoint', 'help' => 'The provider validates and saves this value.'],
-        ['type' => 'secret', 'id' => 'token', 'label' => 'API token'],
-        ['type' => 'checkbox', 'id' => 'enabled', 'label' => 'Enable this integration'],
-    ],
-], [
-    'endpoint' => $endpoint,
-    'tokenConfigured' => $tokenIsSaved,
-    'enabled' => $enabled,
-], $fieldErrors);
+$settingsFragment = SettingsPage::forPlugin('MyPlugin')
+    ->insert(
+        SettingsPageBlock::title('Connection'),
+        SettingsPageBlock::url('endpoint', 'API endpoint', ['help' => 'The provider validates and saves this value.']),
+        SettingsPageBlock::secret('token', 'API token'),
+        SettingsPageBlock::checkbox('enabled', 'Enable this integration')
+    )
+    ->render([
+        'endpoint' => $endpoint,
+        'tokenConfigured' => $tokenIsSaved,
+        'enabled' => $enabled,
+    ], $fieldErrors);
 $this->tpl->assign('settingsContent', $settingsFragment);
 return $this->tpl->display('myplugin.settings');
 ```
 
-The renderer returns a Blade-rendered section, not a full page, form, or route. The provider places it in its own view, wraps it in its own form (with its own CSRF token), validates the submission, and saves settings. Supported block types are `title`, `description`, `checkbox`, `text`, `url`, `number`, `select`, `secret`, `action`, and `custom`. A secret value is never rendered; pass `<fieldId>Configured` as a boolean to show a saved-key placeholder. `custom` accepts a trusted provider callback and is for provider code only, never user-authored templates or HTML. A page can also provide trusted `headerActions` for provider-specific controls while keeping title, description, and Composer metadata in the shared header.
+The shared builder reads the page title and plugin metadata from the provider's installed `composer.json`, unless explicitly overridden. It returns a Blade-rendered section, not a full page, form, or route. The provider places it in its own view, wraps it in its own form (with its own CSRF token), validates the submission, and saves settings. Standard blocks include section headings/descriptions, checkboxes, text/URL/number fields, selects, secrets, and actions. A secret value is never rendered; pass `<fieldId>Configured` as a boolean to show a saved-key placeholder. `custom` accepts a trusted provider callback and is for provider code only, never user-authored templates or HTML. A page can provide trusted `headerActions` for provider-specific controls while keeping title, description, and Composer metadata in the shared header.
 
-The Library autoloader must be available for the route that invokes this class. Use feature detection and keep a provider fallback if the Library is optional. Do not call it from `register.php` or assume plugin filesystem adjacency makes classes available.
+The Library autoloader must be available for the route that invokes this class. This is a runtime dependency for the settings route. Do not call it from `register.php` or assume plugin filesystem adjacency makes classes available.
+
+## Project Settings → Integrations panels
+
+The Library wraps each contributed panel in the standard title, optional description, divider, content, and spacing. A provider returns only its identity and rendered view:
+
+```php
+$panels[] = [
+    'id' => 'myplugin',
+    'label' => 'My Plugin',
+    'description' => 'Configure this project connection.',
+    'view' => 'myplugin::project-settings',
+    'data' => static fn (int $projectId): array => ['projectId' => $projectId],
+];
+```
+
+The `data` callback is optional when a view needs no project-specific data. The provider supplies the view and its data; the Library owns the shared outer layout, project ordering, and override UI. A trusted `render` callback remains available for unusual panels.
 
 ## GUI customization surfaces
 
