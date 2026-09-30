@@ -13,7 +13,7 @@ use Leantime\Plugins\LeantimeLib\Services\TodoSectionRegistry;
 use Leantime\Plugins\LeantimeLib\Services\TodoFieldRegistry;
 use Leantime\Plugins\LeantimeLib\Services\TodoSidebarSectionRegistry;
 use Leantime\Plugins\LeantimeLib\Services\TodoTabRegistry;
-use Leantime\Plugins\LeantimeLib\Services\TodoLayoutEditor;
+use Leantime\Plugins\LeantimeLib\Services\GuiSurfaceRegistry;
 
 class Settings extends Controller
 {
@@ -22,14 +22,16 @@ class Settings extends Controller
     private TodoFieldRegistry $fieldRegistry;
     private TodoSidebarSectionRegistry $sidebarSectionRegistry;
     private SettingService $settings;
+    private GuiSurfaceRegistry $guiSurfaces;
 
-    public function init(TodoTabRegistry $registry, TodoSectionRegistry $sectionRegistry, TodoFieldRegistry $fieldRegistry, TodoSidebarSectionRegistry $sidebarSectionRegistry, SettingService $settings): void
+    public function init(TodoTabRegistry $registry, TodoSectionRegistry $sectionRegistry, TodoFieldRegistry $fieldRegistry, TodoSidebarSectionRegistry $sidebarSectionRegistry, SettingService $settings, GuiSurfaceRegistry $guiSurfaces): void
     {
         $this->registry = $registry;
         $this->sectionRegistry = $sectionRegistry;
         $this->fieldRegistry = $fieldRegistry;
         $this->sidebarSectionRegistry = $sidebarSectionRegistry;
         $this->settings = $settings;
+        $this->guiSurfaces = $guiSurfaces;
     }
 
     #[RequiresPermission(PluginsPermissions::MANAGE, global: true)]
@@ -61,7 +63,7 @@ class Settings extends Controller
     public function post($params)
     {
         $wantsJson = request()->expectsJson();
-        $input = $this->incomingRequest->only(['tabOrder', 'tabEnabled', 'fieldLayout', 'sidebarSectionsPresent', 'sidebarSections', 'hideExploreApps', 'fastOnboarding', 'resetLayout']);
+        $input = $this->incomingRequest->only(['tabOrder', 'tabEnabled', 'fieldLayout', 'sidebarSectionsPresent', 'sidebarSections', 'projectIntegrationOrder', 'hideExploreApps', 'fastOnboarding', 'resetLayout']);
         try {
             $validated = ValidationException::validate($input, [
                 'tabOrder' => ['nullable', 'array'],
@@ -84,6 +86,8 @@ class Settings extends Controller
                 'sidebarSections' => ['nullable', 'array'],
                 'sidebarSections.*.label' => ['required', 'string', 'max:80'],
                 'sidebarSections.*.icon' => ['nullable', 'string', 'max:120', 'regex:/^[a-zA-Z0-9 _-]*$/'],
+                'projectIntegrationOrder' => ['sometimes', 'array'],
+                'projectIntegrationOrder.*' => ['required', 'string', 'max:80'],
                 'hideExploreApps' => ['nullable', 'boolean'],
                 'fastOnboarding' => ['nullable', 'boolean'],
                 'resetLayout' => ['nullable', 'boolean'],
@@ -137,7 +141,10 @@ class Settings extends Controller
             $uiPreferenceSaved = $this->settings->saveSetting('leantimelib.ui.hideExploreApps', $hideExploreApps ? '1' : '0');
             $fastOnboarding = filter_var($validated['fastOnboarding'] ?? false, FILTER_VALIDATE_BOOLEAN);
             $fastOnboardingSaved = $this->settings->saveSetting('leantimelib.ui.fastOnboarding', $fastOnboarding ? '1' : '0');
-            $saved = $sidebarSectionsSaved && $tabsSaved && $tabsEnabledSaved && $fieldLayoutSaved && $uiPreferenceSaved && $fastOnboardingSaved;
+            $projectIntegrationOrderSaved = ! array_key_exists('projectIntegrationOrder', $validated)
+                || app(\Leantime\Plugins\LeantimeLib\Services\ProjectIntegrationRegistry::class)
+                    ->saveGlobalOrder($validated['projectIntegrationOrder']);
+            $saved = $sidebarSectionsSaved && $tabsSaved && $tabsEnabledSaved && $fieldLayoutSaved && $uiPreferenceSaved && $fastOnboardingSaved && $projectIntegrationOrderSaved;
         } catch (\Throwable $exception) {
             Log::error('Leantime Library could not save the To-do layout order.', [
                 'exception_class' => $exception::class,
@@ -166,10 +173,12 @@ class Settings extends Controller
     {
         $this->tpl->assign('tabs', $this->registry->getTabs(null, true));
         $this->tpl->assign('sections', $this->sectionRegistry->getSections(null, [], true));
-        $this->tpl->assign('todoLayoutEditor', app(TodoLayoutEditor::class)->renderGlobalControls(
-            $this->registry->getTabs(null, true),
-            $this->sectionRegistry->getSections(null, [], true)
-        ));
+        $surfaces = $this->guiSurfaces->getSurfaces();
+        foreach ($surfaces as &$surface) {
+            $surface['editorHtml'] = $this->guiSurfaces->renderEditor($surface, ['scope' => 'instance']);
+        }
+        unset($surface);
+        $this->tpl->assign('guiSurfaces', $surfaces);
         $this->tpl->assign('hideExploreApps', filter_var(
             $this->settings->getSetting('leantimelib.ui.hideExploreApps', '0'),
             FILTER_VALIDATE_BOOLEAN

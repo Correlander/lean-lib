@@ -57,12 +57,25 @@
                         <p>Arrange native interface parts and plugin contributions through one shared layout. Plugins provide their widgets; the Library controls where they appear and which ones are visible. If the editor looks cramped or squished, press Ctrl + - to zoom out.</p>
                         <p class="lt-library-workspace__hint">Projects use this layout unless they have a project override.</p>
                     </header>
-                    <label class="lt-library-editor-selector">Editing
-                        <select aria-label="Choose interface area to customize">
-                            <option>To-do modal</option>
-                        </select>
-                    </label>
-                    {!! $todoLayoutEditor !!}
+                    @if (!empty($guiSurfaces))
+                        <label class="lt-library-editor-selector">Editing
+                            <select aria-label="Choose interface area to customize" data-gui-surface-selector>
+                                @foreach ($guiSurfaces as $index => $surface)
+                                    <option value="{{ $surface['id'] }}" @if ($index === 0) selected @endif>{{ $surface['label'] }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        @foreach ($guiSurfaces as $index => $surface)
+                            <section class="lt-library-gui-surface" data-gui-surface="{{ $surface['id'] }}" @if ($index !== 0) hidden @endif>
+                                @if ($surface['description'] !== '')
+                                    <p class="lt-library-workspace__hint">{{ $surface['description'] }}</p>
+                                @endif
+                                {!! $surface['editorHtml'] !!}
+                            </section>
+                        @endforeach
+                    @else
+                        <div class="alert alert-info" role="status">No enabled plugins have registered an editable GUI surface yet.</div>
+                    @endif
                 </section>
                 <p class="lt-library-autosave-status" data-autosave-status role="status" aria-live="polite">Changes automatically saved.</p>
             </form>

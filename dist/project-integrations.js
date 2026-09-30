@@ -36,6 +36,7 @@
             .then(function (result) {
                 if (!result || typeof result.html !== 'string') throw new Error('The Library endpoint returned an invalid response.');
                 panel.innerHTML = heading + result.html;
+                installProjectPanelOrderEditor(panel);
                 panel.dataset.leantimelibLoaded = '1';
                 panel.dispatchEvent(new CustomEvent('leantimelib:integrations-loaded', { bubbles: true, detail: { projectId: projectId } }));
             })
@@ -148,6 +149,75 @@
         } finally {
             buttons.forEach((button) => { button.disabled = false; });
         }
+    }
+
+    async function saveProjectPanelOrder(control, useDefault) {
+        const status = control.querySelector('[data-project-integration-order-status]');
+        const buttons = control.querySelectorAll('[data-project-integration-order-save], [data-project-integration-order-reset]');
+        buttons.forEach((button) => { button.disabled = true; });
+        if (status) status.textContent = useDefault ? 'Restoring Library order…' : 'Saving project order…';
+        try {
+            const order = Array.from(control.querySelectorAll('[data-project-integration-item]')).map((item) => item.dataset.projectIntegrationItem);
+            const response = await fetch(control.dataset.endpoint, {
+                method: 'POST', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': control.dataset.csrf || '' },
+                body: JSON.stringify({ order: order, useDefault: !!useDefault })
+            });
+            const result = await response.json();
+            if (!response.ok || result.saved !== true) throw new Error(result.error || result.message || 'Could not save the project integration order.');
+            window.location.reload();
+        } catch (error) {
+            if (status) status.textContent = error.message;
+            const toggle = control.querySelector('[data-project-integration-order-toggle]');
+            if (toggle && useDefault) toggle.checked = true;
+            buttons.forEach((button) => { button.disabled = false; });
+            console.error('[LeantimeLib project integration order]', error);
+        }
+    }
+
+    function installProjectPanelOrderEditor(root) {
+        const controls = [];
+        if (root.matches && root.matches('[data-project-integration-order]')) controls.push(root);
+        if (root.querySelectorAll) controls.push.apply(controls, root.querySelectorAll('[data-project-integration-order]'));
+        controls.forEach(function (control) {
+            if (control.dataset.orderInstalled === '1') return;
+            control.dataset.orderInstalled = '1';
+            const list = control.querySelector('[data-project-integration-sorter]');
+            if (!list) return;
+            let dragged = null;
+            list.addEventListener('dragstart', function (event) {
+                const item = event.target.closest('[data-project-integration-item]');
+                if (!item) return;
+                dragged = item;
+                item.classList.add('is-dragging');
+                event.dataTransfer.effectAllowed = 'move';
+            });
+            list.addEventListener('dragend', function () {
+                if (dragged) dragged.classList.remove('is-dragging');
+                dragged = null;
+            });
+            list.addEventListener('dragover', function (event) {
+                const target = event.target.closest('[data-project-integration-item]');
+                if (!dragged || !target || target === dragged) return;
+                event.preventDefault();
+                const bounds = target.getBoundingClientRect();
+                list.insertBefore(dragged, event.clientY > bounds.top + bounds.height / 2 ? target.nextSibling : target);
+            });
+            control.addEventListener('click', function (event) {
+                if (event.target.closest('[data-project-integration-order-save]')) saveProjectPanelOrder(control, false);
+                if (event.target.closest('[data-project-integration-order-reset]')) saveProjectPanelOrder(control, true);
+            });
+            control.addEventListener('change', function (event) {
+                const toggle = event.target.closest('[data-project-integration-order-toggle]');
+                if (!toggle) return;
+                const editor = control.querySelector('[data-project-integration-order-editor]');
+                if (toggle.checked) {
+                    if (editor) editor.hidden = false;
+                } else {
+                    saveProjectPanelOrder(control, true);
+                }
+            });
+        });
     }
 
     document.addEventListener('change', function (event) {

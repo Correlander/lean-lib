@@ -29,8 +29,11 @@ Plugins use Leantime's event filters to register additions with the Library. Eac
 | To-do tab | `leantime.plugins.leantimelib.todo.detail.tabs` | A tab with a plugin-rendered panel in the To-do modal. |
 | To-do sidebar section | `leantime.plugins.leantimelib.todo.detail.sections` | An inline plugin panel in the To-do sidebar. |
 | Project integration panel | `leantime.plugins.leantimelib.project.integrations.panels` | A plugin settings panel under Project Settings → Integrations. |
+| Editable GUI surface | `leantime.plugins.leantimelib.gui.surfaces` | A provider-owned customization editor in the Library's GUI surface selector. |
 
-The To-do tab and sidebar section contributions can be arranged in the shared To-do layout editor. Project integration panels currently render in the order their providers register them; a Library ordering control is not implemented yet.
+The To-do tab and sidebar section contributions can be arranged in the shared To-do layout editor. Project integration panels use the order set in the Library’s **Project integrations** GUI editor; an individual project can enable an order-only override in its Integrations settings.
+
+Provider settings pages can use the shared `SettingsPageRenderer` for common fields while retaining their existing routes and save logic. Editable GUI surfaces can register through `plugins.leantimelib.gui.surfaces`. See [Plugin development](PLUGIN_DEVELOPMENT.md) for the versioned API and examples.
 
 Detailed contribution contracts and examples can live in the [GitHub Wiki](https://github.com/Correlander/leantime-lib/wiki) as they are documented. The README will keep the overview and compact contribution index.
 

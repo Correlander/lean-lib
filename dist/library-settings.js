@@ -740,6 +740,56 @@
         });
     }
 
+    function installGuiSurfaceSelector() {
+        const selector = document.querySelector('[data-gui-surface-selector]');
+        if (!selector || selector.dataset.installed === '1') return;
+        selector.dataset.installed = '1';
+        const panels = Array.from(document.querySelectorAll('[data-gui-surface]'));
+        function showSelected() {
+            panels.forEach(function (panel) {
+                panel.hidden = panel.dataset.guiSurface !== selector.value;
+            });
+        }
+        selector.addEventListener('change', showSelected);
+        showSelected();
+    }
+
+    function installIntegrationOrderEditor(root) {
+        const editors = [];
+        if (root.matches && root.matches('[data-integration-order-editor]')) editors.push(root);
+        if (root.querySelectorAll) editors.push.apply(editors, root.querySelectorAll('[data-integration-order-editor]'));
+        editors.forEach(function (editor) {
+            if (editor.dataset.installed === '1') return;
+            editor.dataset.installed = '1';
+            let dragged = null;
+            editor.addEventListener('dragstart', function (event) {
+                const item = event.target.closest('[data-integration-order-item]');
+                if (!item) return;
+                dragged = item;
+                item.classList.add('is-dragging');
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', item.dataset.integrationOrderItem);
+            });
+            editor.addEventListener('dragend', function () {
+                if (dragged) dragged.classList.remove('is-dragging');
+                dragged = null;
+            });
+            editor.addEventListener('dragover', function (event) {
+                const target = event.target.closest('[data-integration-order-item]');
+                if (!dragged || !target || target === dragged) return;
+                event.preventDefault();
+                const bounds = target.getBoundingClientRect();
+                editor.insertBefore(dragged, event.clientY > bounds.top + bounds.height / 2 ? target.nextSibling : target);
+            });
+            editor.addEventListener('drop', function (event) {
+                if (!event.target.closest('[data-integration-order-item]')) return;
+                event.preventDefault();
+                const input = editor.querySelector('input[name="projectIntegrationOrder[]"]');
+                if (input) input.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+        });
+    }
+
     function scan(root) {
         if (root.matches && root.matches('[data-library-workspace]')) installWorkspace(root);
         if (root.querySelectorAll) {
@@ -747,17 +797,20 @@
             root.querySelectorAll('[data-library-layout-editor]').forEach(installLayoutEditor);
             root.querySelectorAll('[data-field-editor]').forEach(installFieldEditor);
         }
+        installIntegrationOrderEditor(root);
     }
 
     function start() {
         scan(document);
         installPluginMetadataSync();
+        installGuiSurfaceSelector();
         if (!window.MutationObserver || !document.body) return;
         new MutationObserver(function (records) {
             records.forEach(function (record) {
                 record.addedNodes.forEach(function (node) {
                     if (node.nodeType === 1) scan(node);
                 });
+                installIntegrationOrderEditor(node);
             });
         }).observe(document.body, { childList: true, subtree: true });
     }

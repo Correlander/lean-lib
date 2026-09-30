@@ -11,6 +11,9 @@ Route::get('/LeantimeLib/projectIntegrations/{projectId}', [ProjectIntegrations:
 Route::post('/LeantimeLib/projectIntegrations/{projectId}/section-visibility', [ProjectIntegrations::class, 'saveSectionVisibility'])
     ->name('leantimeLib.projectIntegrations.sectionVisibility');
 
+Route::post('/LeantimeLib/projectIntegrations/{projectId}/panel-order', [ProjectIntegrations::class, 'savePanelOrder'])
+    ->name('leantimeLib.projectIntegrations.panelOrder');
+
 Route::post('/LeantimeLib/projectIntegrations/{projectId}/todo-layout', [ProjectIntegrations::class, 'saveTodoLayout'])
     ->name('leantimeLib.projectIntegrations.todoLayout');
 

@@ -61,6 +61,21 @@ class ProjectIntegrations
         return response()->json($result);
     }
 
+    #[RequiresPermission(ProjectsPermissions::EDIT, entityScoped: true)]
+    public function savePanelOrder(Request $request, int $projectId)
+    {
+        $this->permissions->authorize(ProjectsPermissions::EDIT, $projectId);
+        $input = ValidationException::validate($request->only(['order', 'useDefault']), [
+            'order' => ['required', 'array'],
+            'order.*' => ['required', 'string', 'max:80'],
+            'useDefault' => ['nullable', 'boolean'],
+        ]);
+        $useDefault = filter_var($input['useDefault'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $saved = $this->registry->saveProjectOrder($projectId, $input['order'], $useDefault);
+        if (! $saved) return response()->json(['error' => 'The project integration order could not be saved.'], 500);
+        return response()->json(['saved' => true, 'useDefault' => $useDefault]);
+    }
+
     // The project ID comes from the route path, so authorize it in the action body.
     #[RequiresPermission(ProjectsPermissions::EDIT, entityScoped: true)]
     public function saveTodoLayout(Request $request, int $projectId)
