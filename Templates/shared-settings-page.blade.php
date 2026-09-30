@@ -1,24 +1,37 @@
-<section class="leantimelib-shared-settings {{ $definition['sectionClass'] }}" data-settings-api-version="1">
+<section class="leantimelib-shared-settings {{ $definition['sectionClass'] }}" data-settings-api-version="2">
     <header class="leantimelib-shared-settings__header {{ $definition['headerClass'] }}">
         <div class="leantimelib-shared-settings__header-copy {{ $definition['headerCopyClass'] }}">
             <h1>{{ $definition['title'] }}</h1>
-            @if ($definition['description'] !== '')
-                <p>{{ $definition['description'] }}</p>
-            @endif
+            <p>{{ $definition['description'] !== '' ? $definition['description'] : 'Description not specified' }}</p>
         </div>
-        @if ($definition['headerActions'])
-            <div class="leantimelib-shared-settings__header-actions">{!! ($definition['headerActions'])() !!}</div>
-        @elseif ($definition['supportUrl'])
-            <a href="{{ $definition['supportUrl'] }}" target="_blank" rel="noopener noreferrer">Support</a>
-        @endif
+        <aside class="leantimelib-shared-settings__identity">
+            <div class="leantimelib-shared-settings__actions">
+                @if ($definition['contributionsUrl'])
+                    <a class="leantimelib-shared-settings__contributions" href="{{ $definition['contributionsUrl'] }}" target="_blank" rel="noopener noreferrer" aria-label="Contributions and donations for {{ $definition['title'] }}" title="Contributions"><i class="fa-brands fa-github" aria-hidden="true"></i></a>
+                @endif
+                @if ($definition['supportUrl'])
+                    <a class="leantimelib-shared-settings__support" href="{{ $definition['supportUrl'] }}" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Support</a>
+                @else
+                    <span class="leantimelib-shared-settings__placeholder">No Support Link Defined</span>
+                @endif
+            </div>
+            <hr>
+            <div class="leantimelib-shared-settings__metadata">
+                <div class="leantimelib-shared-settings__metadata-items">
+                    <span>{{ $definition['author'] !== '' ? 'By '.$definition['author'] : 'Author not specified' }}</span>
+                    <span>{{ $definition['version'] !== '' ? 'Version '.$definition['version'] : 'Version not specified' }}</span>
+                    @if ($definition['homepage'] !== '')
+                        <a href="{{ $definition['homepage'] }}" target="_blank" rel="noopener noreferrer">Project home</a>
+                    @else
+                        <span>Homepage not specified</span>
+                    @endif
+                </div>
+                @if (! $definition['contributionsUrl'])
+                    <span class="leantimelib-shared-settings__placeholder">No Contributions Link Defined</span>
+                @endif
+            </div>
+        </aside>
     </header>
-    @if ($definition['author'] !== '' || $definition['version'] !== '' || $definition['homepage'] !== '')
-        <footer class="leantimelib-shared-settings__metadata">
-            @if ($definition['author'] !== '') <span>By {{ $definition['author'] }}</span> @endif
-            @if ($definition['version'] !== '') <span>Version {{ $definition['version'] }}</span> @endif
-            @if ($definition['homepage'] !== '') <a href="{{ $definition['homepage'] }}" target="_blank" rel="noopener noreferrer">Project home</a> @endif
-        </footer>
-    @endif
 
     @foreach ($definition['blocks'] as $block)
         @if ($block['type'] === 'section')
@@ -30,6 +43,8 @@
             <h2 class="leantimelib-shared-settings__title {{ $block['class'] ?? '' }}">{{ $block['text'] ?? '' }}</h2>
         @elseif ($block['type'] === 'description')
             <p class="leantimelib-shared-settings__description {{ $block['class'] ?? '' }}">{{ $block['text'] ?? '' }}</p>
+        @elseif ($block['type'] === 'alert')
+            <div class="alert alert-{{ $block['tone'] ?? 'danger' }}" role="alert">{{ $block['text'] }}</div>
         @elseif ($block['type'] === 'custom')
             {!! ($block['render'])($values, $errors) !!}
         @elseif ($block['type'] === 'action')
@@ -78,4 +93,16 @@
             </div>
         @endif
     @endforeach
+
+    @if ($definition['footerAction'])
+        <footer class="leantimelib-shared-settings__footer">
+            <hr>
+            <div class="leantimelib-shared-settings__footer-inner">
+                <button type="button" class="lt-library-update-check" data-plugin-metadata-sync data-endpoint="{{ $definition['footerAction']['endpoint'] }}" data-csrf="{{ $definition['footerAction']['csrfToken'] }}" title="Refresh stored plugin metadata from installed composer.json files. Does not download or update plugin code.">
+                    <span>{{ $definition['footerAction']['label'] }}</span><i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                </button>
+                <p class="lt-library-update-check__status" data-plugin-metadata-status role="status" aria-live="polite" hidden></p>
+            </div>
+        </footer>
+    @endif
 </section>

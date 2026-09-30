@@ -5,7 +5,7 @@ namespace Leantime\Plugins\LeantimeLib\Services;
 /** Fluent, low-boilerplate definition for a provider's shared settings page. */
 final class SettingsPage
 {
-    public const API_VERSION = 1;
+    public const API_VERSION = 2;
 
     private array $definition = [];
     /** @var SettingsPageBlock[] */
@@ -40,10 +40,20 @@ final class SettingsPage
         return $this;
     }
 
-    /** Trusted provider-rendered header actions, for example a support link and metadata refresh button. */
-    public function headerActions(callable $render): self
+    public function contributionsUrl(string $url): self
     {
-        $this->definition['headerActions'] = $render;
+        $this->definition['contributionsUrl'] = $url;
+        return $this;
+    }
+
+    /** Add the Library's standard footer action, rendered in the shared footer layout. */
+    public function footerAction(string $label, string $endpoint, string $csrfToken): self
+    {
+        $this->definition['footerAction'] = [
+            'label' => $label,
+            'endpoint' => $endpoint,
+            'csrfToken' => $csrfToken,
+        ];
         return $this;
     }
 

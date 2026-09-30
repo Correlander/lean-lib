@@ -8,16 +8,16 @@ namespace Leantime\Plugins\LeantimeLib\Services;
  */
 class SettingsPageRenderer
 {
-    public const API_VERSION = 1;
+    public const API_VERSION = 2;
 
     /**
      * Render a settings page definition as safe HTML.
      *
-     * Supported block types are section, title, description, checkbox, text, url,
+     * Supported block types are section, title, description, alert, checkbox, text, url,
      * number, select, secret, action, and custom. Custom content is executable provider
      * code and must never contain user-authored templates or untrusted HTML.
      *
-     * @param array{title?:string,description?:string,supportUrl?:string,headerActions?:callable,blocks?:array} $definition
+     * @param array{title?:string,description?:string,supportUrl?:string,contributionsUrl?:string,footerAction?:array,blocks?:array} $definition
      * @param array<string,mixed> $values Current provider-owned values. Secrets should be booleans such as `apiKeyConfigured`.
      * @param array<string,string|array> $errors Provider-generated validation errors, keyed by field ID.
      */
@@ -57,7 +57,7 @@ class SettingsPageRenderer
                 throw new \InvalidArgumentException('Every settings page block must have a type.');
             }
             $type = $block['type'];
-            if (! in_array($type, ['section', 'title', 'description', 'checkbox', 'text', 'url', 'number', 'select', 'secret', 'action', 'custom'], true)) {
+            if (! in_array($type, ['section', 'title', 'description', 'alert', 'checkbox', 'text', 'url', 'number', 'select', 'secret', 'action', 'custom'], true)) {
                 throw new \InvalidArgumentException('Unsupported settings page block type at index '.$index.'.');
             }
 
@@ -85,6 +85,9 @@ class SettingsPageRenderer
             if ($type === 'custom' && ! is_callable($block['render'] ?? null)) {
                 throw new \InvalidArgumentException('Custom settings blocks require a provider render callback.');
             }
+            if ($type === 'alert' && (! is_string($block['text'] ?? null) || ! in_array($block['tone'] ?? 'danger', ['danger', 'warning', 'success', 'info'], true))) {
+                throw new \InvalidArgumentException('Alert blocks require text and a supported tone.');
+            }
 
             $normalizedBlocks[] = $block;
         }
@@ -93,16 +96,25 @@ class SettingsPageRenderer
         if ($supportUrl !== null && (! is_string($supportUrl) || ! $this->isWebUrl($supportUrl))) {
             throw new \InvalidArgumentException('Support URL must be an absolute URL.');
         }
-        $headerActions = $definition['headerActions'] ?? null;
-        if ($headerActions !== null && ! is_callable($headerActions)) {
-            throw new \InvalidArgumentException('Custom settings header actions must be a trusted render callback.');
+        $contributionsUrl = $definition['contributionsUrl'] ?? null;
+        if ($contributionsUrl !== null && (! is_string($contributionsUrl) || ! $this->isWebUrl($contributionsUrl))) {
+            throw new \InvalidArgumentException('Contributions URL must be an absolute URL.');
+        }
+        $footerAction = $definition['footerAction'] ?? null;
+        if ($footerAction !== null && (! is_array($footerAction)
+            || ! is_string($footerAction['label'] ?? null)
+            || ! is_string($footerAction['endpoint'] ?? null)
+            || (! str_starts_with($footerAction['endpoint'], '/') && ! $this->isWebUrl($footerAction['endpoint']))
+            || ! is_string($footerAction['csrfToken'] ?? null))) {
+            throw new \InvalidArgumentException('Footer actions require a label, endpoint, and CSRF token.');
         }
 
         return [
             'title' => trim($title),
             'description' => is_string($definition['description'] ?? null) ? trim($definition['description']) : '',
             'supportUrl' => $supportUrl,
-            'headerActions' => $headerActions,
+            'contributionsUrl' => $contributionsUrl,
+            'footerAction' => $footerAction,
             'headerClass' => is_string($definition['headerClass'] ?? null) ? trim($definition['headerClass']) : '',
             'headerCopyClass' => is_string($definition['headerCopyClass'] ?? null) ? trim($definition['headerCopyClass']) : '',
             'sectionClass' => is_string($definition['sectionClass'] ?? null) ? trim($definition['sectionClass']) : '',
@@ -131,6 +143,14 @@ class SettingsPageRenderer
 
         $support = is_array($metadata['support'] ?? null) ? $metadata['support'] : [];
         $supportUrl = $support['issues'] ?? $support['source'] ?? $support['docs'] ?? null;
+        $funding = is_array($metadata['funding'] ?? null) ? $metadata['funding'] : [];
+        $contributionsUrl = null;
+        foreach ($funding as $fundingLink) {
+            if (is_array($fundingLink) && is_string($fundingLink['url'] ?? null) && $this->isWebUrl($fundingLink['url'])) {
+                $contributionsUrl = $fundingLink['url'];
+                break;
+            }
+        }
 
         return [
             'title' => is_string($metadata['name'] ?? null) && trim($metadata['name']) !== '' ? trim($metadata['name']) : null,
@@ -139,6 +159,7 @@ class SettingsPageRenderer
             'author' => $authorNames === [] ? null : implode(', ', $authorNames),
             'homepage' => is_string($metadata['homepage'] ?? null) && $this->isWebUrl($metadata['homepage']) ? $metadata['homepage'] : null,
             'supportUrl' => is_string($supportUrl) && $this->isWebUrl($supportUrl) ? $supportUrl : null,
+            'contributionsUrl' => $contributionsUrl,
         ];
     }
 

@@ -4,11 +4,14 @@
 
 .leantimelib-shared-settings__header {
     display: flex;
-    align-items: flex-start;
+    align-items: stretch;
     justify-content: space-between;
-    gap: 1.5rem;
+    gap: 0;
     margin: 0 0 1.6rem;
-    padding-bottom: .9rem;
+    overflow: hidden;
+    border: 1px solid var(--box-border-color, #d9d9d9);
+    border-radius: 12px;
+    background: var(--secondary-background-color, #f4f5f6);
 }
 
 .leantimelib-shared-settings__metadata,
@@ -19,10 +22,99 @@
 
 .leantimelib-shared-settings__metadata {
     display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: .875em;
+}
+
+.leantimelib-shared-settings__metadata-items {
+    display: flex;
     flex-wrap: wrap;
+    gap: .4rem 1rem;
+}
+
+.leantimelib-shared-settings__header-copy {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 1.25rem 1.5rem;
+}
+
+.leantimelib-shared-settings__identity {
+    display: flex;
+    flex: 0 1 27rem;
+    flex-direction: column;
+    justify-content: space-between;
+    min-width: 20rem;
+    padding: 1rem 1.25rem;
+    border-left: 1px solid var(--box-border-color, #d9d9d9);
+}
+
+.leantimelib-shared-settings__actions {
+    display: flex;
+    align-items: center;
     justify-content: flex-end;
     gap: .75rem;
-    font-size: .875em;
+    min-height: 2.5rem;
+}
+
+.leantimelib-shared-settings__support,
+.leantimelib-shared-settings__contributions {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    min-height: 2.25rem;
+    padding: .4rem .7rem;
+    border: 1px solid var(--box-border-color, #d9d9d9);
+    border-radius: 8px;
+    background: var(--box-background, #fff);
+    color: var(--link-color, #0874a7);
+    text-decoration: none;
+}
+
+.leantimelib-shared-settings__contributions {
+    width: 2.5rem;
+    padding: .35rem;
+    font-size: 1.2rem;
+}
+
+.leantimelib-shared-settings__support:hover,
+.leantimelib-shared-settings__contributions:hover,
+.leantimelib-shared-settings__support:focus-visible,
+.leantimelib-shared-settings__contributions:focus-visible {
+    border-color: var(--main-action-color, #0874a7);
+    text-decoration: none;
+}
+
+.leantimelib-shared-settings__identity > hr {
+    width: 100%;
+    margin: .75rem 0;
+    border: 0;
+    border-top: 1px solid var(--box-border-color, #d9d9d9);
+}
+
+.leantimelib-shared-settings__placeholder {
+    color: var(--secondary-text-color, #777);
+    font-size: .82em;
+}
+
+.leantimelib-shared-settings__footer {
+    margin-top: 1.5rem;
+}
+
+.leantimelib-shared-settings__footer > hr {
+    margin: 0 0 1rem;
+    border: 0;
+    border-top: 1px solid var(--box-border-color, #d9d9d9);
+}
+
+.leantimelib-shared-settings__footer-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: .4rem;
 }
 
 .leantimelib-shared-settings__section {
@@ -236,53 +328,6 @@
     padding: .8rem 1rem;
     border-left: 3px solid var(--main-action-color, #2684ff);
     background: var(--box-background, #fff);
-}
-
-.leantimelib-shared-settings__header-copy {
-    min-width: 0;
-}
-
-.leantimelib-shared-settings__header-actions {
-    display: flex;
-    flex: 0 0 auto;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: .8rem;
-    min-width: 0;
-}
-
-.lt-library-support {
-    display: inline-flex;
-    flex: 0 0 auto;
-    align-items: center;
-    gap: .65rem;
-    margin-top: .15rem;
-    padding: .55rem .75rem;
-    border: 1px solid var(--box-border-color, #d9d9d9);
-    border-radius: 8px;
-    background: var(--box-background, #fff);
-    color: var(--link-color, #0874a7);
-    text-decoration: none;
-}
-
-.lt-library-support > i {
-    font-size: 1.35rem;
-}
-
-.lt-library-support > span {
-    display: grid;
-    gap: .1rem;
-}
-
-.lt-library-support small {
-    color: var(--secondary-text-color, #68707b);
-    font-size: .78rem;
-}
-
-.lt-library-support:hover,
-.lt-library-support:focus-visible {
-    border-color: var(--main-action-color, #0874a7);
-    text-decoration: none;
 }
 
 .lt-library-update-check {
@@ -1231,8 +1276,11 @@
         flex-direction: column;
     }
 
-    .leantimelib-shared-settings__header-actions {
-        align-self: flex-end;
+    .leantimelib-shared-settings__identity {
+        flex-basis: auto;
+        min-width: 0;
+        border-top: 1px solid var(--box-border-color, #d9d9d9);
+        border-left: 0;
     }
 
     .lt-library-layout-editor__columns,

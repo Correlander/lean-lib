@@ -25,6 +25,11 @@ final class SettingsPageBlock
         return new self(['type' => 'description', 'text' => $text]);
     }
 
+    public static function alert(string $text, string $tone = 'danger'): self
+    {
+        return new self(['type' => 'alert', 'text' => $text, 'tone' => $tone]);
+    }
+
     public static function checkbox(string $id, string $label, string $help = '', bool $default = false): self
     {
         return new self(['type' => 'checkbox', 'id' => $id, 'label' => $label, 'help' => $help, 'default' => $default]);

@@ -198,12 +198,10 @@ class Settings extends Controller
             'hasContributions' => count($pluginTabs) > 0 || count($pluginSections) > 0,
             'showContributionMessage' => true,
         ])->render();
-        $headerActions = static fn (): string => view()->file(__DIR__.'/../Templates/settings-header-actions.blade.php')->render();
-
         $settingsContent = SettingsPage::forPlugin('LeantimeLib')
             ->title('lean-library')
             ->description('One place to manage how enabled Leantime plugins and native interface components fit together.')
-            ->headerActions($headerActions)
+            ->footerAction('Check for updates', BASE_URL.'/LeantimeLib/plugins/check-for-updates', csrf_token())
             ->insert(
                 SettingsPageBlock::section('General improvements', 'Optional changes to Leantime’s navigation and onboarding.'),
                 SettingsPageBlock::checkbox('hideExploreApps', 'Make My Apps the only Apps page', 'Hide Explore Apps and send the Apps menu directly to My Apps.'),
