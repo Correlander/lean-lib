@@ -26,6 +26,12 @@ class GuiSurfaceRegistry
             'overrideCapabilities' => ['order', 'visibility', 'content'],
             'provider' => 'Leantime Library',
             'renderEditor' => static function (array $context = []): string {
+                if (isset($context['projectId'])) {
+                    return app(TodoLayoutEditor::class)->renderProjectControls(
+                        (int) $context['projectId'],
+                        (bool) ($context['canEdit'] ?? false)
+                    );
+                }
                 $tabs = app(TodoTabRegistry::class)->getTabs(null, true);
                 $sections = app(TodoSectionRegistry::class)->getSections(null, [], true);
                 return app(TodoLayoutEditor::class)->renderGlobalControls($tabs, $sections);
@@ -38,7 +44,16 @@ class GuiSurfaceRegistry
             'order' => 10,
             'overrideCapabilities' => ['order'],
             'provider' => 'Leantime Library',
-            'renderEditor' => static fn (array $context = []): string => app(ProjectIntegrationRegistry::class)->renderGlobalOrderEditor(),
+            'renderEditor' => static function (array $context = []): string {
+                $registry = app(ProjectIntegrationRegistry::class);
+                if (isset($context['projectId'])) {
+                    return $registry->renderProjectOrderControls(
+                        (int) $context['projectId'],
+                        (bool) ($context['canEdit'] ?? false)
+                    );
+                }
+                return $registry->renderGlobalOrderEditor();
+            },
         ]];
         $contributions = EventDispatcher::dispatch_filter(self::FILTER, [], [], 'leantime');
         if (! is_array($contributions)) {

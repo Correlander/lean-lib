@@ -194,6 +194,7 @@ class Settings extends Controller
         $guiEditorHtml = view()->file(__DIR__.'/../Templates/gui-settings-editor.blade.php', [
             'guiSurfaces' => $surfaces,
             'hasContributions' => count($pluginTabs) > 0 || count($pluginSections) > 0,
+            'showContributionMessage' => true,
         ])->render();
         $headerActions = static fn (): string => view()->file(__DIR__.'/../Templates/settings-header-actions.blade.php')->render();
 

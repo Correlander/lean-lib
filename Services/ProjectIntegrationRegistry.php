@@ -12,12 +12,24 @@ class ProjectIntegrationRegistry
 {
     public const FILTER = 'leantime.plugins.leantimelib.project.integrations.panels';
 
-    public function __construct(private TodoLayoutEditor $layoutEditor, private SettingService $settings) {}
+    public function __construct(private SettingService $settings) {}
 
     public function renderPanels(int $projectId, bool $canEdit): string
     {
-        $html = $this->renderProjectOrderControls($projectId, $canEdit);
-        $html .= $this->layoutEditor->renderProjectControls($projectId, $canEdit);
+        $guiRegistry = app(GuiSurfaceRegistry::class);
+        $guiSurfaces = $guiRegistry->getSurfaces();
+        foreach ($guiSurfaces as &$surface) {
+            $surface['editorHtml'] = $guiRegistry->renderEditor($surface, [
+                'projectId' => $projectId,
+                'canEdit' => $canEdit,
+            ]);
+        }
+        unset($surface);
+        $html = view()->file(__DIR__.'/../Templates/gui-settings-editor.blade.php', [
+            'guiSurfaces' => $guiSurfaces,
+            'hasContributions' => true,
+            'showContributionMessage' => false,
+        ])->render();
         $panels = $this->getPanels($projectId);
         if ($panels === []) return $html.'<p>No plugins have registered project integrations.</p>';
 
@@ -123,21 +135,21 @@ class ProjectIntegrationRegistry
     public function renderProjectOrderControls(int $projectId, bool $canEdit): string
     {
         $panels = $this->getPanels($projectId);
-        if ($panels === []) return '';
+        if ($panels === []) return '<div class="alert alert-info" role="status">No enabled plugins have contributed project integration panels yet.</div>';
         $overridden = $this->projectOrder($projectId) !== null;
         $endpoint = htmlspecialchars(rtrim(BASE_URL, '/').'/LeantimeLib/projectIntegrations/'.$projectId.'/panel-order', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $csrf = htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $html = '<section class="leantimelib-project-order" data-project-integration-order data-endpoint="'.$endpoint.'" data-csrf="'.$csrf.'">';
-        $html .= '<label><input type="checkbox" data-project-integration-order-toggle'.($overridden ? ' checked' : '').(!$canEdit ? ' disabled' : '').'> Override Library integration panel order for this project</label>';
-        if (! $overridden) $html .= '<p>Project panels use the Library order. Enable the override to arrange them for this project.</p>';
+        $html .= '<label><input type="checkbox" data-project-integration-order-toggle'.($overridden ? ' checked' : '').(!$canEdit ? ' disabled' : '').'> Override instance integration order for this project</label>';
+        if (! $overridden) $html .= '<p>This project uses the instance order. Enable the override to arrange its panels.</p>';
         $html .= '<div data-project-integration-order-editor'.($overridden ? '' : ' hidden').'><ol class="lt-library-integration-order" data-project-integration-sorter>';
         foreach ($panels as $panel) {
             $id = htmlspecialchars($panel['id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
             $label = htmlspecialchars($panel['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
             $html .= '<li draggable="'.($canEdit ? 'true' : 'false').'" data-project-integration-item="'.$id.'"><span class="lt-library-widget__grip" aria-hidden="true">⠿</span><strong>'.$label.'</strong></li>';
         }
-        $html .= '</ol><p data-project-integration-order-status role="status">Using Library defaults.</p>';
-        if ($canEdit) $html .= '<button type="button" class="btn btn-primary" data-project-integration-order-save>Save project order</button> <button type="button" class="btn btn-default" data-project-integration-order-reset>Use Library defaults</button>';
+        $html .= '</ol><p data-project-integration-order-status role="status">Using instance defaults.</p>';
+        if ($canEdit) $html .= '<button type="button" class="btn btn-primary" data-project-integration-order-save>Save project order</button> <button type="button" class="btn btn-default" data-project-integration-order-reset>Use instance defaults</button>';
         return $html.'</div></section>';
     }
 

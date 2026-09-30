@@ -32,8 +32,8 @@ class TodoLayoutEditor
         $html = '';
         if (! $global) {
             $html .= '<section class="lt-library-project-layout" data-project-layout data-endpoint="'.htmlspecialchars(rtrim(BASE_URL, '/').'/LeantimeLib/projectIntegrations/'.$projectId.'/todo-layout', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'" data-csrf="'.htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'">';
-            $html .= '<label class="lt-library-sortable__toggle lt-library-project-layout__toggle"><input type="checkbox" data-project-layout-toggle'.($hasProjectOverride ? ' checked' : '').(!$canEdit ? ' disabled' : '').'> Override Library To-do layout for this project</label>';
-            if (! $hasProjectOverride) $html .= '<p>By default, this project uses the Library layout. Enable the override to arrange its To-do modal.</p>';
+            $html .= '<label class="lt-library-sortable__toggle lt-library-project-layout__toggle"><input type="checkbox" data-project-layout-toggle'.($hasProjectOverride ? ' checked' : '').(!$canEdit ? ' disabled' : '').'> Override instance To-do layout for this project</label>';
+            if (! $hasProjectOverride) $html .= '<p>This project uses the instance layout. Enable the override to arrange its To-do modal.</p>';
             $html .= '<div data-project-layout-panel'.($hasProjectOverride ? '' : ' hidden').'>';
         }
 
@@ -41,14 +41,15 @@ class TodoLayoutEditor
         if ($global) $html .= '<input type="hidden" name="sidebarSectionsPresent" value="1">';
         if (! $global) {
             $html .= '<header class="lt-library-project-layout__heading"><h3>To-do modal layout</h3><p>Arrange tabs, detail fields, sidebar sections, and below-save widgets for this project.</p></header>';
-            $html .= '<p data-project-layout-status role="status">Projects use Library defaults until this layout is saved.</p>';
+            $html .= '<p data-project-layout-status role="status">Projects use instance defaults until this layout is saved.</p>';
         }
         $html .= '<div class="lt-library-layout-stage"><div class="lt-library-ticket">';
-        $html .= '<div class="lt-library-ticket__chrome"><span aria-hidden="true">☐</span><strong>To-do title</strong><small>reset-to-defaults</small>';
+        $resetLabel = $global ? 'reset-to-defaults' : 'reset-to-instance-defaults';
+        $html .= '<div class="lt-library-ticket__chrome"><span aria-hidden="true">☐</span><strong>To-do title</strong><small>'.$resetLabel.'</small>';
         if ($global) {
             $html .= '<button type="button" class="lt-library-ticket__reset-button" data-layout-reset-preview data-tooltip="Reset the To-do layout to defaults" aria-label="Reset the To-do layout to defaults">×</button>';
         } else {
-            $html .= '<button type="button" class="lt-library-ticket__reset-button" data-project-layout-reset'.(!$canEdit || !$hasProjectOverride ? ' disabled' : '').' data-tooltip="Use Library defaults for this project" aria-label="Use Library defaults for this project">×</button>';
+            $html .= '<button type="button" class="lt-library-ticket__reset-button" data-project-layout-reset'.(!$canEdit || !$hasProjectOverride ? ' disabled' : '').' data-tooltip="Reset this project to instance-level defaults" aria-label="Reset this project to instance-level defaults">×</button>';
         }
         $html .= '</div>';
         $html .= '<div class="lt-library-ticket__tabstrip"><ol class="lt-library-zone" data-library-zone="tabs">';

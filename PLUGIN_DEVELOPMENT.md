@@ -62,11 +62,11 @@ EventDispatcher::add_filter_listener(
 );
 ```
 
-Surface IDs must be stable and unique. `overrideCapabilities` may include `order`, `visibility`, and/or `content`; only declare controls the provider can actually apply. The editor callback receives a context array and returns a trusted Blade-rendered fragment, without a nested `<form>`. Its save endpoint remains provider-owned. Invalid or unsupported contributions are logged and skipped without taking down other surfaces.
+Surface IDs must be stable and unique. `overrideCapabilities` may include `order`, `visibility`, and/or `content`; only declare controls the provider can actually apply. The editor callback receives a context array and returns a trusted Blade-rendered fragment, without a nested `<form>`. In the Library page, the context is empty; in Project Settings → Integrations it includes `projectId` and `canEdit`. A surface that supports project overrides must render the project-specific controls when `projectId` is present, and reset those controls to the current instance default. Its save endpoint remains provider-owned. Invalid or unsupported contributions are logged and skipped without taking down other surfaces.
 
 For simple, data-driven editors, providers should describe controls/components with stable IDs, labels, types, defaults, and supported placement/visibility capabilities. The current API registers and renders surface editors; generic shared layout storage is a follow-on implementation. The Library cannot safely infer controls by inspecting arbitrary Blade output. A provider-specific editor and apply adapter is the supported fallback for complex UI.
 
-The To-do canvas currently uses the Library's specialized editor and To-do registries. Project Settings → Integrations ordering is also a built-in surface: the Library controls the instance order, and projects can opt into an order-only override.
+The To-do canvas currently uses the Library's specialized editor and To-do registries. Project Settings → Integrations ordering is also a built-in surface: the Library controls the instance order, and projects can opt into an order-only override. Both editors appear under the same surface selector in the Library settings page and in Project Settings → Integrations.
 
 ## Runtime and project defaults
 

@@ -1,8 +1,20 @@
 (function () {
     'use strict';
 
-    const heading = '<header class="leantimelib-integrations-heading"><h3>Correlander’s Leantime Integration Library</h3><p>Project integration settings provided by enabled Leantime plugins.</p></header>';
+    const heading = '<header class="leantimelib-integrations-heading"><h3>leantime lib — project integrations</h3><p>Project integration settings provided by enabled Leantime plugins.</p></header>';
     const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+
+    function installGuiSurfaceSelector(root) {
+        const selector = root.querySelector('[data-gui-surface-selector]');
+        if (!selector || selector.dataset.installed === '1') return;
+        selector.dataset.installed = '1';
+        const panels = Array.from(root.querySelectorAll('[data-gui-surface]'));
+        function showSelected() {
+            panels.forEach(function (surface) { surface.hidden = surface.dataset.guiSurface !== selector.value; });
+        }
+        selector.addEventListener('change', showSelected);
+        showSelected();
+    }
 
     function start() {
         const panel = document.querySelector('.projectTabs #integrations');
@@ -36,6 +48,7 @@
             .then(function (result) {
                 if (!result || typeof result.html !== 'string') throw new Error('The Library endpoint returned an invalid response.');
                 panel.innerHTML = heading + result.html;
+                installGuiSurfaceSelector(panel);
                 installProjectPanelOrderEditor(panel);
                 panel.dataset.leantimelibLoaded = '1';
                 panel.dispatchEvent(new CustomEvent('leantimelib:integrations-loaded', { bubbles: true, detail: { projectId: projectId } }));
@@ -119,7 +132,7 @@
         const status = control.querySelector('[data-project-layout-status]');
         const buttons = control.querySelectorAll('[data-project-layout-save], [data-project-layout-reset]');
         buttons.forEach((button) => { button.disabled = true; });
-        if (status) status.textContent = reset ? 'Restoring Library defaults…' : 'Saving project layout…';
+        if (status) status.textContent = reset ? 'Restoring instance defaults…' : 'Saving project layout…';
         try {
             const tabs = getProjectState(control, 'tabs', 'tabs');
             const fields = getFieldState(control);
@@ -155,7 +168,7 @@
         const status = control.querySelector('[data-project-integration-order-status]');
         const buttons = control.querySelectorAll('[data-project-integration-order-save], [data-project-integration-order-reset]');
         buttons.forEach((button) => { button.disabled = true; });
-        if (status) status.textContent = useDefault ? 'Restoring Library order…' : 'Saving project order…';
+        if (status) status.textContent = useDefault ? 'Restoring instance order…' : 'Saving project order…';
         try {
             const order = Array.from(control.querySelectorAll('[data-project-integration-item]')).map((item) => item.dataset.projectIntegrationItem);
             const response = await fetch(control.dataset.endpoint, {

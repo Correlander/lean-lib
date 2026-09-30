@@ -1,4 +1,4 @@
-@if (!$hasContributions)
+@if (($showContributionMessage ?? true) && !$hasContributions)
     <div class="alert alert-info" role="status">
         No enabled plugins have contributed To-do tabs or sidebar sections yet. Contributions will appear here when plugins register them with the Library.
     </div>
