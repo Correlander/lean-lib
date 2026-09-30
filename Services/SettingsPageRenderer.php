@@ -100,6 +100,10 @@ class SettingsPageRenderer
         if ($contributionsUrl !== null && (! is_string($contributionsUrl) || ! $this->isWebUrl($contributionsUrl))) {
             throw new \InvalidArgumentException('Contributions URL must be an absolute URL.');
         }
+        $sourceUrl = $definition['sourceUrl'] ?? null;
+        if ($sourceUrl !== null && (! is_string($sourceUrl) || ! $this->isWebUrl($sourceUrl))) {
+            throw new \InvalidArgumentException('Source URL must be an absolute HTTP or HTTPS URL.');
+        }
         $footerAction = $definition['footerAction'] ?? null;
         if ($footerAction !== null && (! is_array($footerAction)
             || ! is_string($footerAction['label'] ?? null)
@@ -120,6 +124,10 @@ class SettingsPageRenderer
             'sectionClass' => is_string($definition['sectionClass'] ?? null) ? trim($definition['sectionClass']) : '',
             'version' => is_string($definition['version'] ?? null) ? trim($definition['version']) : '',
             'author' => is_string($definition['author'] ?? null) ? trim($definition['author']) : '',
+            'authors' => is_array($definition['authors'] ?? null) ? $definition['authors'] : [],
+            'emails' => is_array($definition['emails'] ?? null) ? $definition['emails'] : [],
+            'license' => is_string($definition['license'] ?? null) ? trim($definition['license']) : '',
+            'sourceUrl' => $sourceUrl,
             'homepage' => is_string($definition['homepage'] ?? null) && $this->isWebUrl($definition['homepage']) ? $definition['homepage'] : '',
             'blocks' => $normalizedBlocks,
         ];
@@ -140,6 +148,14 @@ class SettingsPageRenderer
             is_array($author) && is_string($author['name'] ?? null) && trim($author['name']) !== ''
         ));
         $authorNames = array_map(static fn (array $author): string => trim($author['name']), $authors);
+        $authorDetails = array_map(function (array $author): array {
+            $profile = $author['homepage'] ?? null;
+            return [
+                'name' => trim($author['name']),
+                'email' => is_string($author['email'] ?? null) && trim($author['email']) !== '' ? trim($author['email']) : null,
+                'homepage' => is_string($profile) && $this->isWebUrl($profile) ? $profile : null,
+            ];
+        }, $authors);
 
         $support = is_array($metadata['support'] ?? null) ? $metadata['support'] : [];
         $supportUrl = $support['issues'] ?? $support['source'] ?? $support['docs'] ?? null;
@@ -151,12 +167,21 @@ class SettingsPageRenderer
                 break;
             }
         }
+        $sourceUrl = $support['source'] ?? null;
+        $license = $metadata['license'] ?? null;
+        if (is_array($license)) {
+            $license = implode(', ', array_filter($license, 'is_string'));
+        }
 
         return [
             'title' => is_string($metadata['name'] ?? null) && trim($metadata['name']) !== '' ? trim($metadata['name']) : null,
             'description' => is_string($metadata['description'] ?? null) && trim($metadata['description']) !== '' ? trim($metadata['description']) : null,
             'version' => is_string($metadata['version'] ?? null) && trim($metadata['version']) !== '' ? trim($metadata['version']) : null,
             'author' => $authorNames === [] ? null : implode(', ', $authorNames),
+            'authors' => $authorDetails === [] ? null : $authorDetails,
+            'emails' => array_values(array_filter(array_column($authorDetails, 'email'))),
+            'license' => is_string($license) && trim($license) !== '' ? trim($license) : null,
+            'sourceUrl' => is_string($sourceUrl) && $this->isWebUrl($sourceUrl) ? $sourceUrl : null,
             'homepage' => is_string($metadata['homepage'] ?? null) && $this->isWebUrl($metadata['homepage']) ? $metadata['homepage'] : null,
             'supportUrl' => is_string($supportUrl) && $this->isWebUrl($supportUrl) ? $supportUrl : null,
             'contributionsUrl' => $contributionsUrl,

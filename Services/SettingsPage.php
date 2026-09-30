@@ -46,6 +46,13 @@ final class SettingsPage
         return $this;
     }
 
+    /** The Version link target is supplied as-is by the plugin author. */
+    public function sourceUrl(string $url): self
+    {
+        $this->definition['sourceUrl'] = $url;
+        return $this;
+    }
+
     /** Add the Library's standard footer action, rendered in the shared footer layout. */
     public function footerAction(string $label, string $endpoint, string $csrfToken): self
     {

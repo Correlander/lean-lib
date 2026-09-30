@@ -22,9 +22,10 @@
 
 .leantimelib-shared-settings__metadata {
     display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 1rem;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: .55rem;
     font-size: .875em;
 }
 
@@ -32,6 +33,23 @@
     display: flex;
     flex-wrap: wrap;
     gap: .4rem 1rem;
+}
+
+.leantimelib-shared-settings__metadata-primary {
+    display: grid;
+    justify-items: start;
+    gap: .3rem;
+}
+
+.leantimelib-shared-settings__metadata-secondary {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: .4rem 1rem;
+}
+
+.leantimelib-shared-settings__emails {
+    color: var(--secondary-text-color, #777);
 }
 
 .leantimelib-shared-settings__header-copy {
@@ -51,16 +69,18 @@
 }
 
 .leantimelib-shared-settings__actions {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: center;
-    justify-content: flex-end;
-    gap: .75rem;
+    gap: .65rem;
     min-height: 2.5rem;
 }
 
 .leantimelib-shared-settings__support,
 .leantimelib-shared-settings__contributions {
     display: inline-flex;
+    width: 100%;
+    min-width: 0;
     flex: 0 0 auto;
     align-items: center;
     justify-content: center;
@@ -75,9 +95,16 @@
 }
 
 .leantimelib-shared-settings__contributions {
-    width: 2.5rem;
+    width: 100%;
     padding: .35rem;
     font-size: 1.2rem;
+}
+
+.leantimelib-shared-settings__contributions--missing {
+    justify-self: stretch;
+    font-size: .78rem;
+    line-height: 1.3;
+    text-align: center;
 }
 
 .leantimelib-shared-settings__support:hover,
