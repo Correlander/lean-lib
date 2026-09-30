@@ -69,9 +69,11 @@ class SettingsPageRenderer
                 if ($type === 'select' && ! is_array($block['options'] ?? null)) {
                     throw new \InvalidArgumentException('Select fields require an options array.');
                 }
-                if ($type === 'action' && (! is_string($block['actionUrl'] ?? null)
+                if ($type === 'action' && (
+                    ! is_string($block['actionUrl'] ?? null)
                     || (! str_starts_with($block['actionUrl'], '/')
-                        && ! $this->isWebUrl($block['actionUrl']))) {
+                        && ! $this->isWebUrl($block['actionUrl']))
+                )) {
                     throw new \InvalidArgumentException('Action fields require an action URL.');
                 }
             }

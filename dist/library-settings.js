@@ -810,7 +810,6 @@
                 record.addedNodes.forEach(function (node) {
                     if (node.nodeType === 1) scan(node);
                 });
-                installIntegrationOrderEditor(node);
             });
         }).observe(document.body, { childList: true, subtree: true });
     }
