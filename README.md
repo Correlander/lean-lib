@@ -48,4 +48,4 @@ These options use Leantime hooks and a request-scoped binding where needed; they
 
 ## License
 
-<small>All rights reserved for now. The intent is to permit non-commercial use; the author is considering a future open-source license that requires derivatives to retain the same license and non-commercial terms.</small>
+<small>All rights reserved for now. The intent is to permit non-commercial use; a future open-source license that requires derivatives to retain the same license and non-commercial terms is probably the endpoint, but I don't want to focus on licensing details rn...</small>
