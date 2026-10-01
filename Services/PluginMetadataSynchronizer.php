@@ -83,19 +83,29 @@ class PluginMetadataSynchronizer
                 continue;
             }
 
-            $authors = [];
-            foreach (is_array($metadata['authors'] ?? null) ? $metadata['authors'] : [] as $author) {
-                if (! is_array($author)) {
-                    continue;
-                }
+            $authors = $metadata['authors'] ?? null;
+            if (! is_array($authors)) {
+                $skipped++;
+                continue;
+            }
 
-                // Leantime 3.10.0's InstalledPlugin::getMetadataLinks() reads
-                // both properties without checking they exist. Composer permits
-                // email to be omitted, so normalize it to an empty string before
-                // persisting the author object to zp_plugins.
-                $author['name'] = is_string($author['name'] ?? null) ? $author['name'] : '';
-                $author['email'] = is_string($author['email'] ?? null) ? $author['email'] : '';
-                $authors[] = $author;
+            $authorsValid = true;
+            foreach ($authors as $author) {
+                if (! is_array($author)
+                    || ! is_string($author['name'] ?? null)
+                    || trim($author['name']) === ''
+                    || ! array_key_exists('email', $author)
+                    || ! is_string($author['email'])
+                    || (trim($author['email']) !== '' && filter_var(trim($author['email']), FILTER_VALIDATE_EMAIL) === false)) {
+                    $authorsValid = false;
+                    break;
+                }
+            }
+            if (! $authorsValid) {
+                // Do not invent missing author fields during refresh. Leave the
+                // existing database row untouched until the package metadata is fixed.
+                $skipped++;
+                continue;
             }
             $fields = [
                 'name' => trim($metadata['name']),
@@ -137,7 +147,7 @@ class PluginMetadataSynchronizer
             'unchanged' => $unchanged,
             'skipped' => $skipped,
             'message' => sprintf(
-                'Refreshed metadata for %d plugin(s); %d already current; %d skipped. Plugin code, enablement, licenses, and install dates were left unchanged.',
+                'Refreshed metadata for %d plugin(s); %d already current; %d skipped because metadata was unavailable or incomplete. Plugin code, enablement, licenses, and install dates were left unchanged.',
                 $updated,
                 $unchanged,
                 $skipped
