@@ -75,13 +75,13 @@ Each entry needs a stable, unique provider-prefixed `id`, a non-empty `label`, a
 
 ## Library plugin manager detail content
 
-Enabled providers may contribute an optional fragment to their selected entry in **Company Settings → Integrations** through `plugins.leantimelib.pluginManager.settings` (Plugin Manager Content API v1). The Library supplies the plugin list, Composer metadata, status, and lifecycle controls. This hook adds provider-owned detail/settings content inside the selected plugin card; it does not replace the provider's route or move its save/action ownership into the Library.
+Enabled providers may contribute an optional fragment to their selected entry in **Company Settings → Integrations** through `leantime.plugins.leantimelib.pluginManager.settings` (Plugin Manager Content API v1). The Library supplies the plugin list, Composer metadata, status, and lifecycle controls. This hook adds provider-owned detail/settings content inside the selected plugin card; it does not replace the provider's route or move its save/action ownership into the Library.
 
 ```php
 use Leantime\Core\Events\EventDispatcher;
 
 EventDispatcher::add_filter_listener(
-    'plugins.leantimelib.pluginManager.settings',
+    'leantime.plugins.leantimelib.pluginManager.settings',
     static function (array $entries, array $context): array {
         $entries[] = [
             'apiVersion' => 1,
