@@ -1,6 +1,6 @@
 <?php
 
-namespace Leantime\Plugins\LeantimeLib\Controllers;
+namespace Leantime\Plugins\LeanLib\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -8,8 +8,8 @@ use Leantime\Core\Auth\Permissions\RequiresPermission;
 use Leantime\Core\Auth\Permissions\PermissionService;
 use Leantime\Core\Exceptions\ValidationException;
 use Leantime\Domain\Projects\Permissions\ProjectsPermissions;
-use Leantime\Plugins\LeantimeLib\Services\ProjectIntegrationRegistry;
-use Leantime\Plugins\LeantimeLib\Services\TodoFieldRegistry;
+use Leantime\Plugins\LeanLib\Services\ProjectIntegrationRegistry;
+use Leantime\Plugins\LeanLib\Services\TodoFieldRegistry;
 use Throwable;
 
 class ProjectIntegrations
@@ -55,7 +55,7 @@ class ProjectIntegrations
         $enabled = filter_var($input['useDefault'] ?? false, FILTER_VALIDATE_BOOLEAN)
             ? null
             : filter_var($input['enabled'] ?? null, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-        $result = app(\Leantime\Plugins\LeantimeLib\Services\TodoSectionRegistry::class)
+        $result = app(\Leantime\Plugins\LeanLib\Services\TodoSectionRegistry::class)
             ->setProjectSectionVisibility($projectId, $sectionId, $enabled);
         if ($result === null) return response()->json(['error' => 'That To-do section is not registered.'], 422);
         return response()->json($result);
@@ -113,8 +113,8 @@ class ProjectIntegrations
             return response()->json(['error' => 'Keep at least one To-do tab visible.'], 422);
         }
 
-        $tabs = app(\Leantime\Plugins\LeantimeLib\Services\TodoTabRegistry::class);
-        $sections = app(\Leantime\Plugins\LeantimeLib\Services\TodoSectionRegistry::class);
+        $tabs = app(\Leantime\Plugins\LeanLib\Services\TodoTabRegistry::class);
+        $sections = app(\Leantime\Plugins\LeanLib\Services\TodoSectionRegistry::class);
         $fields = app(TodoFieldRegistry::class);
         if (filter_var($input['reset'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
             $tabs->resetProjectLayout($projectId);

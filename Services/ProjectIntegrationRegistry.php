@@ -1,6 +1,6 @@
 <?php
 
-namespace Leantime\Plugins\LeantimeLib\Services;
+namespace Leantime\Plugins\LeanLib\Services;
 
 use Illuminate\Support\Facades\Log;
 use Leantime\Core\Events\EventDispatcher;
@@ -158,7 +158,7 @@ class ProjectIntegrationRegistry
         $panels = $this->getPanels($projectId);
         if ($panels === []) return '<div class="alert alert-info" role="status">No enabled plugins have contributed project integration panels yet.</div>';
         $overridden = $this->projectOrder($projectId) !== null;
-        $endpoint = htmlspecialchars(rtrim(BASE_URL, '/').'/LeantimeLib/projectIntegrations/'.$projectId.'/panel-order', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $endpoint = htmlspecialchars(rtrim(BASE_URL, '/').'/LeanLib/projectIntegrations/'.$projectId.'/panel-order', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $csrf = htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $html = '<section class="leantimelib-project-order" data-project-integration-order data-endpoint="'.$endpoint.'" data-csrf="'.$csrf.'">';
         $html .= '<label><input type="checkbox" data-project-integration-order-toggle'.($overridden ? ' checked' : '').(!$canEdit ? ' disabled' : '').'> Override instance integration order for this project</label>';

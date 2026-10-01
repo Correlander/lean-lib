@@ -123,14 +123,25 @@
         @endif
     @endforeach
 
-    @if ($definition['footerAction'])
+    @if ($definition['footer'] || $definition['footerAction'])
         <footer class="leantimelib-shared-settings__footer">
             <hr>
             <div class="leantimelib-shared-settings__footer-inner">
-                <button type="button" class="lt-library-update-check" data-plugin-metadata-sync data-endpoint="{{ $definition['footerAction']['endpoint'] }}" data-csrf="{{ $definition['footerAction']['csrfToken'] }}" title="Refresh stored plugin metadata from installed composer.json files. Does not download or update plugin code.">
-                    <span>{{ $definition['footerAction']['label'] }}</span><i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
-                </button>
-                <p class="lt-library-update-check__status" data-plugin-metadata-status role="status" aria-live="polite" hidden></p>
+                @if ($definition['footer'])
+                    @if ($definition['footer']['autosave'])
+                        <p class="lt-library-autosave-status" data-autosave-status role="status" aria-live="polite">Changes automatically saved.</p>
+                    @else
+                        <button class="btn btn-primary" type="submit">{{ $definition['footer']['submitLabel'] }}</button>
+                    @endif
+                @endif
+                @if ($definition['footerAction'])
+                    <div class="leantimelib-shared-settings__footer-action">
+                        <button type="button" class="lt-library-update-check" data-plugin-metadata-sync data-endpoint="{{ $definition['footerAction']['endpoint'] }}" data-csrf="{{ $definition['footerAction']['csrfToken'] }}" title="Refresh stored plugin metadata from installed composer.json files. Does not download or update plugin code.">
+                            <span>{{ $definition['footerAction']['label'] }}</span><i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                        </button>
+                        <p class="lt-library-update-check__status" data-plugin-metadata-status role="status" aria-live="polite" hidden></p>
+                    </div>
+                @endif
             </div>
         </footer>
     @endif

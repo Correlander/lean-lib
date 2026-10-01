@@ -1,6 +1,6 @@
 <?php
 
-namespace Leantime\Plugins\LeantimeLib\Services;
+namespace Leantime\Plugins\LeanLib\Services;
 
 /**
  * Renders the shared, declarative portion of a provider's settings page.
@@ -8,7 +8,7 @@ namespace Leantime\Plugins\LeantimeLib\Services;
  */
 class SettingsPageRenderer
 {
-    public const API_VERSION = 2;
+    public const API_VERSION = 3;
 
     /**
      * Render a settings page definition as safe HTML.
@@ -17,7 +17,7 @@ class SettingsPageRenderer
      * number, select, secret, action, and custom. Custom content is executable provider
      * code and must never contain user-authored templates or untrusted HTML.
      *
-     * @param array{title?:string,description?:string,supportUrl?:string,contributionsUrl?:string,footerAction?:array,blocks?:array} $definition
+     * @param array{title?:string,description?:string,supportUrl?:string,contributionsUrl?:string,footer?:array{autosave:bool,submitLabel:string},footerAction?:array,blocks?:array} $definition
      * @param array<string,mixed> $values Current provider-owned values. Secrets should be booleans such as `apiKeyConfigured`.
      * @param array<string,string|array> $errors Provider-generated validation errors, keyed by field ID.
      */
@@ -112,6 +112,13 @@ class SettingsPageRenderer
             || ! is_string($footerAction['csrfToken'] ?? null))) {
             throw new \InvalidArgumentException('Footer actions require a label, endpoint, and CSRF token.');
         }
+        $footer = $definition['footer'] ?? null;
+        if ($footer !== null && (! is_array($footer)
+            || ! is_bool($footer['autosave'] ?? null)
+            || ! is_string($footer['submitLabel'] ?? null)
+            || trim($footer['submitLabel']) === '')) {
+            throw new \InvalidArgumentException('Settings page footers require an autosave flag and non-empty submit label.');
+        }
 
         return [
             'title' => trim($title),
@@ -119,6 +126,7 @@ class SettingsPageRenderer
             'supportUrl' => $supportUrl,
             'contributionsUrl' => $contributionsUrl,
             'footerAction' => $footerAction,
+            'footer' => $footer,
             'headerClass' => is_string($definition['headerClass'] ?? null) ? trim($definition['headerClass']) : '',
             'headerCopyClass' => is_string($definition['headerCopyClass'] ?? null) ? trim($definition['headerCopyClass']) : '',
             'sectionClass' => is_string($definition['sectionClass'] ?? null) ? trim($definition['sectionClass']) : '',

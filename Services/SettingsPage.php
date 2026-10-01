@@ -1,11 +1,11 @@
 <?php
 
-namespace Leantime\Plugins\LeantimeLib\Services;
+namespace Leantime\Plugins\LeanLib\Services;
 
 /** Fluent, low-boilerplate definition for a provider's shared settings page. */
 final class SettingsPage
 {
-    public const API_VERSION = 2;
+    public const API_VERSION = 3;
 
     private array $definition = [];
     /** @var SettingsPageBlock[] */
@@ -19,6 +19,16 @@ final class SettingsPage
     public static function forPlugin(string $pluginFolder): self
     {
         return new self($pluginFolder);
+    }
+
+    /** Add the standard form footer. The caller owns autosave behavior and persistence. */
+    public function footer(bool $autosave, string $submitLabel = 'Save'): self
+    {
+        $this->definition['footer'] = [
+            'autosave' => $autosave,
+            'submitLabel' => $submitLabel,
+        ];
+        return $this;
     }
 
     public function title(string $title): self

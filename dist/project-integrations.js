@@ -30,7 +30,7 @@
             if (value) resultParams.set(key, value);
         });
         const query = resultParams.toString();
-        const url = base.replace(/\/$/, '') + '/LeantimeLib/projectIntegrations/' + encodeURIComponent(projectId) + (query ? '?' + query : '');
+        const url = base.replace(/\/$/, '') + '/LeanLib/projectIntegrations/' + encodeURIComponent(projectId) + (query ? '?' + query : '');
         fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
             .then(async function (response) {
                 const responseText = await response.text();
@@ -56,7 +56,7 @@
             .catch(function (error) {
                 panel.innerHTML = heading + '<div class="alert alert-warning" role="alert">Project integrations could not be loaded. '+escapeHtml(error.message)+' Check the browser console and Leantime application log for details.</div>';
                 panel.dataset.leantimelibLoaded = '1';
-                console.error('[LeantimeLib integrations]', { endpoint: url, projectId: projectId, error: error });
+                console.error('[LeanLib integrations]', { endpoint: url, projectId: projectId, error: error });
             });
     }
 
@@ -100,7 +100,7 @@
                 checkbox.disabled = false;
             }
             if (reset) reset.disabled = false;
-            console.error('[LeantimeLib project visibility]', error);
+            console.error('[LeanLib project visibility]', error);
         }
     }
 
@@ -158,7 +158,7 @@
                 if (toggle) toggle.checked = true;
                 if (editor) editor.hidden = false;
             }
-            console.error('[LeantimeLib project layout]', error);
+            console.error('[LeanLib project layout]', error);
         } finally {
             buttons.forEach((button) => { button.disabled = false; });
         }
@@ -184,7 +184,7 @@
             const toggle = control.querySelector('[data-project-integration-order-toggle]');
             if (toggle && useDefault) toggle.checked = true;
             buttons.forEach((button) => { button.disabled = false; });
-            console.error('[LeantimeLib project integration order]', error);
+            console.error('[LeanLib project integration order]', error);
         }
     }
 

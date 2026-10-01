@@ -1,14 +1,14 @@
-# lean-library contribution API
+# lean-lib contribution API
 
-This page describes the shared UI contracts provided by lean-library (settings API v2). Each provider keeps its own routes and owns its data, permissions, validation, and persistence. The Library supplies shared rendering and centrally managed GUI surface configuration.
+This page describes the shared UI contracts provided by lean-lib (settings API v3). Each provider keeps its own routes and owns its data, permissions, validation, and persistence. The Library supplies shared rendering and centrally managed GUI surface configuration.
 
 ## Shared plugin settings page
 
-A provider keeps its existing settings controller/URL. When that route is rendered, use `SettingsPage` and `SettingsPageBlock` to declare the common settings blocks. This is a runtime dependency on lean-library for that route; provider bootstrap and unrelated backend routes do not need to call the renderer.
+A provider keeps its existing settings controller/URL. When that route is rendered, use `SettingsPage` and `SettingsPageBlock` to declare the common settings blocks. This is a runtime dependency on lean-lib for that route; provider bootstrap and unrelated backend routes do not need to call the renderer.
 
 ```php
-use Leantime\Plugins\LeantimeLib\Services\SettingsPage;
-use Leantime\Plugins\LeantimeLib\Services\SettingsPageBlock;
+use Leantime\Plugins\LeanLib\Services\SettingsPage;
+use Leantime\Plugins\LeanLib\Services\SettingsPageBlock;
 
 $settingsFragment = SettingsPage::forPlugin('MyPlugin')
     ->insert(
@@ -26,7 +26,7 @@ $this->tpl->assign('settingsContent', $settingsFragment);
 return $this->tpl->display('myplugin.settings');
 ```
 
-The shared builder reads the page title, description, authors and their optional emails, version, license, source, support URL, and funding URL from the provider's installed `composer.json`, unless explicitly overridden. Put one Composer author object per person; each object can have its own `email`. Composer `funding` supplies the optional GitHub contributions link, or call `->contributionsUrl(...)`. The Version link uses `support.source` exactly as provided, regardless of host or path; call `->sourceUrl(...)` to override it. Missing metadata gets a visible placeholder. The standard header, support/contributions area, metadata rows, and optional footer action all use the same Library template. For example, the Library's metadata refresh button uses `->footerAction(label, endpoint, csrfToken)`; the template provides its divider and right-aligned control. The builder returns a Blade-rendered section, not a full page, form, or route. The provider places it in its own view, wraps it in its own form (with its own CSRF token), validates the submission, and saves settings. Standard blocks include section headings/descriptions, alerts, checkboxes, text/URL/number fields, selects, secrets, and actions. A secret value is never rendered; pass `<fieldId>Configured` as a boolean to show a saved-key placeholder. `custom` accepts a trusted provider callback and is for provider code only, never user-authored templates or HTML.
+The shared builder reads the page title, description, authors and their optional emails, version, license, source, support URL, and funding URL from the provider's installed `composer.json`, unless explicitly overridden. Put one Composer author object per person; each object can have its own `email`. Composer `funding` supplies the optional contributions link, or call `->contributionsUrl(...)`. The Version link uses `support.source` exactly as provided, regardless of host or path; call `->sourceUrl(...)` to override it. Missing metadata gets a visible placeholder. The standard header, support/contributions area, metadata rows, and footer all use the same Library template. Every page that uses the shared footer calls `->footer(bool $autosave, string $submitLabel = 'Save')`: `true` renders the autosave status slot and `false` renders a submit button. The page/provider still owns its autosave implementation and persistence. The Library metadata refresh action uses `->footerAction(label, endpoint, csrfToken)` and shares the footer's divider and layout. The builder returns a Blade-rendered section, not a full page, form, or route. The provider places it in its own view, wraps it in its own form (with its own CSRF token), validates the submission, and saves settings. Standard blocks include section headings/descriptions, alerts, checkboxes, text/URL/number fields, selects, secrets, and actions. A secret value is never rendered; pass `<fieldId>Configured` as a boolean to show a saved-key placeholder. `custom` accepts a trusted provider callback and is for provider code only, never user-authored templates or HTML.
 
 The Library autoloader must be available for the route that invokes this class. This is a runtime dependency for the settings route. Do not call it from `register.php` or assume plugin filesystem adjacency makes classes available.
 

@@ -3,11 +3,11 @@
 use Leantime\Core\Events\EventDispatcher;
 use Leantime\Domain\Plugins\Services\Registration;
 use Leantime\Domain\Setting\Services\Setting as SettingService;
-use Leantime\Plugins\LeantimeLib\Services\TodoSectionRegistry;
-use Leantime\Plugins\LeantimeLib\Services\TodoTabRegistry;
-use Leantime\Plugins\LeantimeLib\Services\UserSchedulePanel;
+use Leantime\Plugins\LeanLib\Services\TodoSectionRegistry;
+use Leantime\Plugins\LeanLib\Services\TodoTabRegistry;
+use Leantime\Plugins\LeanLib\Services\UserSchedulePanel;
 
-$registration = app()->makeWith(Registration::class, ['pluginId' => 'LeantimeLib']);
+$registration = app()->makeWith(Registration::class, ['pluginId' => 'LeanLib']);
 $fastOnboardingValue = app(SettingService::class)->getSetting('leantimelib.ui.fastOnboarding', null);
 $fastOnboarding = ($fastOnboardingValue === null || $fastOnboardingValue === false)
     ? filter_var(app(SettingService::class)->getSetting('leantimelib.ui.hideOnboardingSteps', '0'), FILTER_VALIDATE_BOOLEAN)
@@ -17,8 +17,8 @@ $fastOnboarding = ($fastOnboardingValue === null || $fastOnboardingValue === fal
 if ($fastOnboarding) {
     // Leantime 3.10.0 has no exposed cancellation hook around automatic starter
     // project creation; use a narrow request-scoped service replacement.
-    app()->bind(\Leantime\Domain\Help\Services\Helper::class, \Leantime\Plugins\LeantimeLib\Services\NoDefaultProjectHelper::class);
-    $registration->registerMiddleware([\Leantime\Plugins\LeantimeLib\Services\NoProjectRedirect::class]);
+    app()->bind(\Leantime\Domain\Help\Services\Helper::class, \Leantime\Plugins\LeanLib\Services\NoDefaultProjectHelper::class);
+    $registration->registerMiddleware([\Leantime\Plugins\LeanLib\Services\NoProjectRedirect::class]);
 }
 
 EventDispatcher::add_event_listener('leantime.*.afterLinkTags', function () use ($fastOnboarding): void {
@@ -30,7 +30,7 @@ EventDispatcher::add_event_listener('leantime.*.afterLinkTags', function () use 
         ['hideExploreApps' => $hideExploreApps, 'fastOnboarding' => $fastOnboarding, 'appUrl' => rtrim(BASE_URL, '/')],
         JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
     );
-    echo '<script>window.leantimeLibraryPreferences='.$preferences.';</script>';
+    echo '<script>window.leanLibraryPreferences='.$preferences.';</script>';
 });
 
 $registration->addHeaderJs(['app-preferences.js']);

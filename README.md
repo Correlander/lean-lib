@@ -1,16 +1,18 @@
-# lean-library
+# lean-lib
 
-lean-library is a shared extension point and administration interface for coordinating compatible Leantime plugins and interface customizations. The design is intended to support multiple parts of Leantime; the To-do modal is the first interface currently available for visual customization.
+lean-lib is a shared extension point and administration interface for coordinating compatible Leantime plugins and interface customizations. The design is intended to support multiple parts of Leantime; the To-do modal is the first interface currently available for visual customization.
 
 It also provides a shared registry for plugin panels in **Project Settings → Integrations**. Plugin authors contribute content through the Library, which gives administrators a central place to manage compatible additions.
 
 ## Install
 
-1. Copy the plugin into `app/Plugins/LeantimeLib/`. Keep the folder name exactly `LeantimeLib`.
+1. Copy the plugin into `app/Plugins/LeanLib/`. The Composer package name is `lean-lib`; Leantime's installed folder/ID is `LeanLib` because it derives PHP namespaces and lifecycle class names from that folder.
 2. Enable it from **My Apps**.
 3. Open the Library settings from the plugin controls.
 
-When updating, copy the whole plugin folder, including `dist/` and `dist/mix-manifest.json`. Those files are required for browser assets and cache versions.
+Existing installations use the previous folder ID `LeantimeLib`. Leantime treats `LeanLib` as a new plugin record rather than renaming that record. Disable the old entry, install and enable `LeanLib`, then verify the Library settings; the Library's saved setting keys are unchanged.
+
+Version 0.19.0 keeps the `lean-lib` Composer package name while using Leantime’s normalized `LeanLib` installed folder ID. It includes settings API v3, including a shared footer that selects autosave status or a normal submit button. Autosave persistence remains the provider page's responsibility. When updating, copy the whole plugin folder, including `dist/` and `dist/mix-manifest.json`. Those files are required for browser assets and cache versions.
 
 ## GUI customizations and insertions
 

@@ -1,6 +1,6 @@
 <?php
 
-namespace Leantime\Plugins\LeantimeLib\Services;
+namespace Leantime\Plugins\LeanLib\Services;
 
 /** Renders the Library's shared drag-and-drop widget editor for project overrides. */
 class TodoLayoutEditor
@@ -31,7 +31,7 @@ class TodoLayoutEditor
 
         $html = '';
         if (! $global) {
-            $html .= '<section class="lt-library-project-layout" data-project-layout data-endpoint="'.htmlspecialchars(rtrim(BASE_URL, '/').'/LeantimeLib/projectIntegrations/'.$projectId.'/todo-layout', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'" data-csrf="'.htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'">';
+            $html .= '<section class="lt-library-project-layout" data-project-layout data-endpoint="'.htmlspecialchars(rtrim(BASE_URL, '/').'/LeanLib/projectIntegrations/'.$projectId.'/todo-layout', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'" data-csrf="'.htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'">';
             $html .= '<label class="lt-library-sortable__toggle lt-library-project-layout__toggle"><input type="checkbox" data-project-layout-toggle'.($hasProjectOverride ? ' checked' : '').(!$canEdit ? ' disabled' : '').'> Override instance To-do layout for this project</label>';
             if (! $hasProjectOverride) $html .= '<p>This project uses the instance layout. Enable the override to arrange its To-do modal.</p>';
             $html .= '<div data-project-layout-panel'.($hasProjectOverride ? '' : ' hidden').'>';

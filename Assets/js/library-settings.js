@@ -242,7 +242,7 @@
                 setStatus('All changes saved.', 'saved');
             } catch (error) {
                 setStatus(error.message, 'error');
-                console.error('[LeantimeLib settings autosave]', error);
+                console.error('[LeanLib settings autosave]', error);
             } finally {
                 saving = false;
                 if (saveAgain) {
@@ -276,7 +276,7 @@
             }).catch(function (error) {
                 button.disabled = false;
                 setStatus(error.message, 'error');
-                console.error('[LeantimeLib settings reset]', error);
+                console.error('[LeanLib settings reset]', error);
             });
         }
 
@@ -731,7 +731,7 @@
                     status.dataset.state = 'error';
                     status.hidden = false;
                 }
-                console.error('[LeantimeLib plugin metadata refresh]', error);
+                console.error('[LeanLib plugin metadata refresh]', error);
             } finally {
                 button.disabled = false;
                 button.removeAttribute('aria-busy');

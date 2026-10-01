@@ -1,6 +1,6 @@
 <?php
 
-namespace Leantime\Plugins\LeantimeLib\Services;
+namespace Leantime\Plugins\LeanLib\Services;
 
 /** A standard, metadata-only block for a shared plugin settings page. */
 final class SettingsPageBlock

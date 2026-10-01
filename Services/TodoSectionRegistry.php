@@ -1,6 +1,6 @@
 <?php
 
-namespace Leantime\Plugins\LeantimeLib\Services;
+namespace Leantime\Plugins\LeanLib\Services;
 
 use Illuminate\Support\Facades\Log;
 use Leantime\Core\Events\EventDispatcher;
@@ -116,7 +116,7 @@ class TodoSectionRegistry
             $this->getSections(null, ['projectId' => $projectId], true),
             static fn (array $section): bool => ! $section['builtin']
         ));
-        $endpoint = htmlspecialchars(rtrim(BASE_URL, '/').'/LeantimeLib/projectIntegrations/'.$projectId.'/section-visibility', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $endpoint = htmlspecialchars(rtrim(BASE_URL, '/').'/LeanLib/projectIntegrations/'.$projectId.'/section-visibility', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $csrf = htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $html = '<section class="leantimelib-project-todo-visibility" data-leantimelib-visibility data-endpoint="'.$endpoint.'" data-csrf="'.$csrf.'">';
         $html .= '<h3>To-do section visibility</h3>';

@@ -73,7 +73,7 @@
                     else tabs.tabs('option', 'active', false);
                 }
             } catch (error) {
-                console.warn('[LeantimeLib todo layout] Could not refresh the tab widget.', error);
+                console.warn('[LeanLib todo layout] Could not refresh the tab widget.', error);
             }
         }
     }
@@ -313,7 +313,7 @@
         const config = container.querySelector('.leantimelib-todo-layout-order[data-layout]');
         if (!config) {
             if (container.dataset.leantimelibLayoutWarning !== '1') {
-                console.warn('[LeantimeLib] To-do modal found without layout metadata; check Library ticketTabs hook output.');
+                console.warn('[LeanLib] To-do modal found without layout metadata; check Library ticketTabs hook output.');
                 container.dataset.leantimelibLayoutWarning = '1';
             }
             return false;
@@ -323,7 +323,7 @@
         try {
             layout = JSON.parse(config.dataset.layout || '{}');
         } catch (error) {
-            console.error('[LeantimeLib todo layout] Invalid layout configuration.', error);
+            console.error('[LeanLib todo layout] Invalid layout configuration.', error);
             return false;
         }
 
@@ -331,7 +331,7 @@
         const details = container.querySelector('#ticketdetails');
         if (!applyFields(details, layout.fields || {}, layout.sidebarSections || [])) {
             if (container.dataset.leantimelibLayoutWarning !== '1') {
-                console.warn('[LeantimeLib] To-do modal layout metadata was found, but the native form structure did not match.');
+                console.warn('[LeanLib] To-do modal layout metadata was found, but the native form structure did not match.');
                 container.dataset.leantimelibLayoutWarning = '1';
             }
             return false;
@@ -340,7 +340,7 @@
         const signature = JSON.stringify(layout);
         if (container.dataset.leantimelibLayoutApplied !== signature) {
             container.dataset.leantimelibLayoutApplied = signature;
-            console.info('[LeantimeLib] Applied saved To-do layout.', layout);
+            console.info('[LeanLib] Applied saved To-do layout.', layout);
         }
         return true;
     }

@@ -1,6 +1,6 @@
 <?php
 
-namespace Leantime\Plugins\LeantimeLib\Controllers;
+namespace Leantime\Plugins\LeanLib\Controllers;
 
 use Illuminate\Support\Facades\Log;
 use Leantime\Core\Auth\Permissions\RequiresPermission;
@@ -9,13 +9,13 @@ use Leantime\Core\Controller\Frontcontroller;
 use Leantime\Core\Exceptions\ValidationException;
 use Leantime\Domain\Plugins\Permissions\PluginsPermissions;
 use Leantime\Domain\Setting\Services\Setting as SettingService;
-use Leantime\Plugins\LeantimeLib\Services\TodoSectionRegistry;
-use Leantime\Plugins\LeantimeLib\Services\TodoFieldRegistry;
-use Leantime\Plugins\LeantimeLib\Services\TodoSidebarSectionRegistry;
-use Leantime\Plugins\LeantimeLib\Services\TodoTabRegistry;
-use Leantime\Plugins\LeantimeLib\Services\GuiSurfaceRegistry;
-use Leantime\Plugins\LeantimeLib\Services\SettingsPage;
-use Leantime\Plugins\LeantimeLib\Services\SettingsPageBlock;
+use Leantime\Plugins\LeanLib\Services\TodoSectionRegistry;
+use Leantime\Plugins\LeanLib\Services\TodoFieldRegistry;
+use Leantime\Plugins\LeanLib\Services\TodoSidebarSectionRegistry;
+use Leantime\Plugins\LeanLib\Services\TodoTabRegistry;
+use Leantime\Plugins\LeanLib\Services\GuiSurfaceRegistry;
+use Leantime\Plugins\LeanLib\Services\SettingsPage;
+use Leantime\Plugins\LeanLib\Services\SettingsPageBlock;
 
 class Settings extends Controller
 {
@@ -41,14 +41,14 @@ class Settings extends Controller
     {
         $this->assignPageData();
 
-        return $this->tpl->display('leantimelib.settings');
+        return $this->tpl->display('leanlib.settings');
     }
 
     #[RequiresPermission(PluginsPermissions::MANAGE, global: true)]
     public function syncPluginMetadata()
     {
         try {
-            $result = app(\Leantime\Plugins\LeantimeLib\Services\PluginMetadataSynchronizer::class)->syncInstalledPluginMetadata();
+            $result = app(\Leantime\Plugins\LeanLib\Services\PluginMetadataSynchronizer::class)->syncInstalledPluginMetadata();
             return response()->json($result);
         } catch (\Throwable $exception) {
             Log::error('Leantime Library plugin metadata refresh failed.', [
@@ -105,14 +105,14 @@ class Settings extends Controller
             if ($wantsJson) return response()->json(['error' => $message, 'errors' => $errors], 422);
             $this->assignPageData(is_array($first) ? reset($first) : 'Check the tab order and try again.');
 
-            return $this->tpl->display('leantimelib.settings');
+            return $this->tpl->display('leanlib.settings');
         }
 
         if (! filter_var($validated['resetLayout'] ?? false, FILTER_VALIDATE_BOOLEAN)
             && empty($validated['tabEnabled'])) {
             if ($wantsJson) return response()->json(['error' => 'Keep at least one To-do tab visible.'], 422);
             $this->assignPageData('Keep at least one To-do tab visible.');
-            return $this->tpl->display('leantimelib.settings');
+            return $this->tpl->display('leanlib.settings');
         }
 
         if (filter_var($validated['resetLayout'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
@@ -122,7 +122,7 @@ class Settings extends Controller
             if ($wantsJson) return response()->json(['saved' => true, 'reset' => true]);
             $this->tpl->setNotification('To-do layout reset to defaults.', 'success');
 
-            return Frontcontroller::redirect(BASE_URL.'/LeantimeLib/settings');
+            return Frontcontroller::redirect(BASE_URL.'/LeanLib/settings');
         }
 
         $order = $validated['tabOrder'] ?? [];
@@ -144,7 +144,7 @@ class Settings extends Controller
             $fastOnboarding = filter_var($validated['fastOnboarding'] ?? false, FILTER_VALIDATE_BOOLEAN);
             $fastOnboardingSaved = $this->settings->saveSetting('leantimelib.ui.fastOnboarding', $fastOnboarding ? '1' : '0');
             $projectIntegrationOrderSaved = ! array_key_exists('projectIntegrationOrder', $validated)
-                || app(\Leantime\Plugins\LeantimeLib\Services\ProjectIntegrationRegistry::class)
+                || app(\Leantime\Plugins\LeanLib\Services\ProjectIntegrationRegistry::class)
                     ->saveGlobalOrder($validated['projectIntegrationOrder']);
             $saved = $sidebarSectionsSaved && $tabsSaved && $tabsEnabledSaved && $fieldLayoutSaved && $uiPreferenceSaved && $fastOnboardingSaved && $projectIntegrationOrderSaved;
         } catch (\Throwable $exception) {
@@ -162,13 +162,13 @@ class Settings extends Controller
             if ($wantsJson) return response()->json(['error' => 'The Library settings could not be saved.'], 500);
             $this->assignPageData('The Library settings could not be saved.');
 
-            return $this->tpl->display('leantimelib.settings');
+            return $this->tpl->display('leanlib.settings');
         }
 
         if ($wantsJson) return response()->json(['saved' => true]);
         $this->tpl->setNotification('Library settings saved.', 'success');
 
-        return Frontcontroller::redirect(BASE_URL.'/LeantimeLib/settings');
+        return Frontcontroller::redirect(BASE_URL.'/LeanLib/settings');
     }
 
     private function assignPageData(?string $error = null): void
@@ -198,10 +198,11 @@ class Settings extends Controller
             'hasContributions' => count($pluginTabs) > 0 || count($pluginSections) > 0,
             'showContributionMessage' => true,
         ])->render();
-        $settingsContent = SettingsPage::forPlugin('LeantimeLib')
-            ->title('lean-library')
+        $settingsContent = SettingsPage::forPlugin('LeanLib')
+            ->title('lean-lib')
             ->description('One place to manage how enabled Leantime plugins and native interface components fit together.')
-            ->footerAction('Check for updates', BASE_URL.'/LeantimeLib/plugins/check-for-updates', csrf_token())
+            ->footer(true)
+            ->footerAction('Check for updates', BASE_URL.'/LeanLib/plugins/check-for-updates', csrf_token())
             ->insert(
                 SettingsPageBlock::section('General improvements', 'Optional changes to Leantime’s navigation and onboarding.'),
                 SettingsPageBlock::checkbox('hideExploreApps', 'Make My Apps the only Apps page', 'Hide Explore Apps and send the Apps menu directly to My Apps.'),

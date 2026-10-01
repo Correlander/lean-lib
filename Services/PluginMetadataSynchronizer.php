@@ -1,6 +1,6 @@
 <?php
 
-namespace Leantime\Plugins\LeantimeLib\Services;
+namespace Leantime\Plugins\LeanLib\Services;
 
 use Illuminate\Support\Facades\Cache;
 use Leantime\Core\Db\Db as DbCore;

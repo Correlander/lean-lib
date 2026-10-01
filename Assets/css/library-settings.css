@@ -139,9 +139,20 @@
 
 .leantimelib-shared-settings__footer-inner {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: .4rem;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .75rem 1rem;
+}
+
+.leantimelib-shared-settings__footer-inner > .lt-library-autosave-status {
+    margin: 0;
+}
+
+.leantimelib-shared-settings__footer-action {
+    margin-left: auto;
+    text-align: right;
 }
 
 .leantimelib-shared-settings__section {

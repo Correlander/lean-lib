@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const preferences = window.leantimeLibraryPreferences || {};
+    const preferences = window.leanLibraryPreferences || {};
     const appUrl = String(preferences.appUrl || '').replace(/\/$/, '');
 
     function removeExploreAppsTab() {

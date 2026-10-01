@@ -1,6 +1,6 @@
 <?php
 
-namespace Leantime\Plugins\LeantimeLib\Services;
+namespace Leantime\Plugins\LeanLib\Services;
 
 use Illuminate\Support\Facades\Log;
 use Leantime\Core\Events\EventDispatcher;

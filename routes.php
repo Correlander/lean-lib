@@ -1,24 +1,34 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Leantime\Plugins\LeantimeLib\Controllers\ProjectIntegrations;
-use Leantime\Plugins\LeantimeLib\Controllers\Settings;
-use Leantime\Plugins\LeantimeLib\Controllers\UserSchedule;
+use Leantime\Plugins\LeanLib\Controllers\ProjectIntegrations;
+use Leantime\Plugins\LeanLib\Controllers\Settings;
+use Leantime\Plugins\LeanLib\Controllers\UserSchedule;
 
-Route::get('/LeantimeLib/projectIntegrations/{projectId}', [ProjectIntegrations::class, 'show'])
-    ->name('leantimeLib.projectIntegrations');
+Route::get('/LeanLib/projectIntegrations/{projectId}', [ProjectIntegrations::class, 'show'])
+    ->name('leanLib.projectIntegrations');
 
-Route::post('/LeantimeLib/projectIntegrations/{projectId}/section-visibility', [ProjectIntegrations::class, 'saveSectionVisibility'])
-    ->name('leantimeLib.projectIntegrations.sectionVisibility');
+Route::post('/LeanLib/projectIntegrations/{projectId}/section-visibility', [ProjectIntegrations::class, 'saveSectionVisibility'])
+    ->name('leanLib.projectIntegrations.sectionVisibility');
 
-Route::post('/LeantimeLib/projectIntegrations/{projectId}/panel-order', [ProjectIntegrations::class, 'savePanelOrder'])
-    ->name('leantimeLib.projectIntegrations.panelOrder');
+Route::post('/LeanLib/projectIntegrations/{projectId}/panel-order', [ProjectIntegrations::class, 'savePanelOrder'])
+    ->name('leanLib.projectIntegrations.panelOrder');
 
-Route::post('/LeantimeLib/projectIntegrations/{projectId}/todo-layout', [ProjectIntegrations::class, 'saveTodoLayout'])
-    ->name('leantimeLib.projectIntegrations.todoLayout');
+Route::post('/LeanLib/projectIntegrations/{projectId}/todo-layout', [ProjectIntegrations::class, 'saveTodoLayout'])
+    ->name('leanLib.projectIntegrations.todoLayout');
 
-Route::post('/LeantimeLib/my-schedule', [UserSchedule::class, 'post'])
-    ->name('leantimeLib.userSchedule.save');
+Route::post('/LeanLib/my-schedule', [UserSchedule::class, 'post'])
+    ->name('leanLib.userSchedule.save');
 
-Route::post('/LeantimeLib/plugins/check-for-updates', [Settings::class, 'syncPluginMetadata'])
-    ->name('leantimeLib.plugins.syncMetadata');
+Route::post('/LeanLib/plugins/check-for-updates', [Settings::class, 'syncPluginMetadata'])
+    ->name('leanLib.plugins.syncMetadata');
+
+// Backward-compatible aliases for installs that still have the previous folder ID in links.
+Route::get('/LeantimeLib/projectIntegrations/{projectId}', [ProjectIntegrations::class, 'show']);
+Route::post('/LeantimeLib/projectIntegrations/{projectId}/section-visibility', [ProjectIntegrations::class, 'saveSectionVisibility']);
+Route::post('/LeantimeLib/projectIntegrations/{projectId}/panel-order', [ProjectIntegrations::class, 'savePanelOrder']);
+Route::post('/LeantimeLib/projectIntegrations/{projectId}/todo-layout', [ProjectIntegrations::class, 'saveTodoLayout']);
+Route::post('/LeantimeLib/my-schedule', [UserSchedule::class, 'post']);
+Route::post('/LeantimeLib/plugins/check-for-updates', [Settings::class, 'syncPluginMetadata']);
+Route::get('/LeantimeLib/settings', [Settings::class, 'get']);
+Route::post('/LeantimeLib/settings', [Settings::class, 'post']);

@@ -1,6 +1,6 @@
 <?php
 
-namespace Leantime\Plugins\LeantimeLib\Controllers;
+namespace Leantime\Plugins\LeanLib\Controllers;
 
 use Illuminate\Http\Request;
 use Leantime\Core\Controller\Controller;

@@ -1,6 +1,6 @@
 <?php
 
-namespace Leantime\Plugins\LeantimeLib\Services;
+namespace Leantime\Plugins\LeanLib\Services;
 
 use Leantime\Domain\Setting\Services\Setting as SettingService;
 
@@ -24,7 +24,7 @@ class UserSchedulePanel
 
         echo '<div id="workSchedule"><h4 class="widgettitle title-light">Work schedule</h4>';
         echo '<p>Set your usual work start, lunch, and end times. Leantime uses these preferences in schedule-aware views.</p>';
-        echo '<form action="'.htmlspecialchars(rtrim(BASE_URL, '/').'/LeantimeLib/my-schedule', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'" method="post">';
+        echo '<form action="'.htmlspecialchars(rtrim(BASE_URL, '/').'/LeanLib/my-schedule', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'" method="post">';
         echo '<input type="hidden" name="_token" value="'.htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'">';
         foreach (['workStart' => 'Work starts', 'lunch' => 'Lunch', 'workEnd' => 'Work ends'] as $field => $label) {
             $selectedValue = (string) ($schedule[$field] ?? match ($field) {'workStart' => '8', 'lunch' => '12', default => '16'});
