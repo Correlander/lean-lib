@@ -104,15 +104,24 @@
                 const tabs = window.jQuery(root);
                 if (tabs.data('ui-tabs')) {
                     tabs.tabs('refresh');
-                    tabs.off('tabsactivate.leantimelibHash').on('tabsactivate.leantimelibHash', function (event, ui) {
-                        const panelId = ui && ui.newPanel && ui.newPanel.attr('id');
-                        if (!panelId) return;
+                    if (root.dataset.leantimelibCompanyHashHandler !== '1') {
+                        root.addEventListener('click', function (event) {
+                            const target = event.target instanceof Element ? event.target.closest('a[href^="#"]') : null;
+                            if (!target || !list.contains(target)) return;
 
-                        const hash = '#' + panelId;
-                        if (window.location.hash !== hash) {
-                            window.history.replaceState(null, '', window.location.pathname + window.location.search + hash);
-                        }
-                    });
+                            const panelId = target.getAttribute('href').slice(1);
+                            if (!panels.has(panelId)) return;
+
+                            // Leantime 3.10.0's activate callback runs on the
+                            // tab list and writes #undefined. This root-level
+                            // handler runs after it and restores the real panel ID.
+                            const hash = '#' + panelId;
+                            if (window.location.hash !== hash) {
+                                window.history.replaceState(null, '', window.location.pathname + window.location.search + hash);
+                            }
+                        });
+                        root.dataset.leantimelibCompanyHashHandler = '1';
+                    }
                     const activeHash = window.location.hash.replace(/^#/, '');
                     const selectedTab = panels.has(activeHash) ? activeHash : ((layout.tabs || [])[0] || 'details');
                     const selectedIndex = Array.from(list.children).filter((item) => !item.hidden).findIndex((item) => item.querySelector('a[href="#' + CSS.escape(selectedTab) + '"]'));
