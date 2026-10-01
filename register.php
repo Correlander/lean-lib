@@ -26,6 +26,28 @@ if ($fastOnboarding) {
 
 $registration->registerMiddleware([\Leantime\Plugins\LeanLib\Services\PluginManagementRedirect::class]);
 
+// Replace the native Apps entry with the Library manager while preserving
+// Leantime's plugin lifecycle routes and all other Administration links.
+EventDispatcher::add_filter_listener(
+    'leantime.domain.menu.repositories.menu.getMenuStructure.menuStructures.company',
+    static function (array $menu): array {
+        foreach ($menu as $menuKey => $item) {
+            if (($item['id'] ?? null) !== 'administration' || ! is_array($item['submenu'] ?? null)) {
+                continue;
+            }
+
+            foreach ($item['submenu'] as $key => $entry) {
+                if (($entry['module'] ?? null) === 'plugins'
+                    && ($entry['href'] ?? null) === '/plugins/marketplace') {
+                    unset($menu[$menuKey]['submenu'][$key]);
+                }
+            }
+        }
+
+        return $menu;
+    }
+);
+
 EventDispatcher::add_event_listener('leantime.*.afterLinkTags', function () use ($fastOnboarding): void {
     $preferences = json_encode(
         ['fastOnboarding' => $fastOnboarding, 'appUrl' => rtrim(BASE_URL, '/')],

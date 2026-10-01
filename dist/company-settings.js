@@ -104,6 +104,15 @@
                 const tabs = window.jQuery(root);
                 if (tabs.data('ui-tabs')) {
                     tabs.tabs('refresh');
+                    tabs.off('tabsactivate.leantimelibHash').on('tabsactivate.leantimelibHash', function (event, ui) {
+                        const panelId = ui && ui.newPanel && ui.newPanel.attr('id');
+                        if (!panelId) return;
+
+                        const hash = '#' + panelId;
+                        if (window.location.hash !== hash) {
+                            window.history.replaceState(null, '', window.location.pathname + window.location.search + hash);
+                        }
+                    });
                     const activeHash = window.location.hash.replace(/^#/, '');
                     const selectedTab = panels.has(activeHash) ? activeHash : ((layout.tabs || [])[0] || 'details');
                     const selectedIndex = Array.from(list.children).filter((item) => !item.hidden).findIndex((item) => item.querySelector('a[href="#' + CSS.escape(selectedTab) + '"]'));
