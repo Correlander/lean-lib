@@ -10,7 +10,9 @@ use Throwable;
 class PluginManagerRegistry
 {
     public const API_VERSION = 1;
-    public const FILTER = 'leantime.plugins.leantimelib.pluginManager.settings';
+    /** Leantime's public hook name is leantime.plugins.leantimelib.pluginManager.settings. */
+    public const FILTER = 'plugins.leantimelib.pluginManager.settings';
+    public const HOOK = 'leantime.'.self::FILTER;
 
     public function renderSettings(string $pluginId): ?string
     {
@@ -19,7 +21,8 @@ class PluginManagerRegistry
         $contributions = EventDispatcher::dispatch_filter(
             self::FILTER,
             [],
-            ['pluginId' => $pluginId, 'scope' => 'plugin-manager']
+            ['pluginId' => $pluginId, 'scope' => 'plugin-manager'],
+            'leantime'
         );
         if (!is_array($contributions)) {
             Log::error('Leantime Library received an invalid plugin manager contribution list.');

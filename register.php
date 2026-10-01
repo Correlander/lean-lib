@@ -69,7 +69,7 @@ EventDispatcher::add_event_listener(
 EventDispatcher::add_event_listener('leantime.domain.setting.templates.editCompanySettings.tabs', [CompanySettingsEditor::class, 'renderTabHeader']);
 EventDispatcher::add_event_listener('leantime.domain.setting.templates.editCompanySettings.tabsContent', [CompanySettingsEditor::class, 'renderTabContent']);
 EventDispatcher::add_filter_listener(
-    PluginManagerRegistry::FILTER,
+    PluginManagerRegistry::HOOK,
     static function (array $entries, array $context): array {
         if (($context['pluginId'] ?? null) !== 'LeanLib') return $entries;
 
