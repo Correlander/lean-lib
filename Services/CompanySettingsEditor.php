@@ -119,6 +119,11 @@ class CompanySettingsEditor
     public function renderTabContent(array $params = []): void
     {
         $layout = $this->layout();
+        $integrationsDirectlyPlaced = in_array(
+            'company.integrations',
+            $layout['regions']['integrations']['content'] ?? [],
+            true
+        );
         $allWidgets = [];
         foreach ($layout['regions'] as $tabId => $tabRegions) {
             foreach ($tabRegions as $ids) foreach ($ids as $id) if (!isset($allWidgets[$id])) $allWidgets[$id] = $tabId;
@@ -126,7 +131,7 @@ class CompanySettingsEditor
         $stashHtml = '';
         foreach ($allWidgets as $widgetId => $tabId) {
             if ($widgetId === 'company.integrations') {
-                $stashHtml .= $this->renderIntegrationsWidget();
+                if (!$integrationsDirectlyPlaced) $stashHtml .= $this->renderIntegrationsWidget();
                 continue;
             }
             $stashHtml .= $this->renderLiveWidgets([$widgetId]);
@@ -135,7 +140,10 @@ class CompanySettingsEditor
         foreach ($layout['tabs'] as $id) {
             $isIntegrations = $id === 'integrations';
             if ($id === 'details' || $id === 'apiKeys') continue;
-            echo '<div id="'.$this->e($id).'" data-leantimelib-company-panel="'.$this->e($id).'"'.($isIntegrations ? ' data-leantimelib-integrations-panel' : '').'></div>';
+            $content = $isIntegrations && $integrationsDirectlyPlaced
+                ? '<div data-leantimelib-company-region="content">'.$this->renderIntegrationsWidget().'</div>'
+                : '';
+            echo '<div id="'.$this->e($id).'" data-leantimelib-company-panel="'.$this->e($id).'"'.($isIntegrations ? ' data-leantimelib-integrations-panel' : '').'>'.$content.'</div>';
         }
     }
 

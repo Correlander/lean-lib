@@ -77,13 +77,6 @@
             stash.appendChild(apiWidget);
         }
 
-        const integrationsPanel = panels.get('integrations');
-        if (integrationsPanel && stash) {
-            const integrationsWidget = document.createElement('div');
-            integrationsWidget.dataset.companyLiveWidget = 'company.integrations';
-            stash.appendChild(integrationsWidget);
-        }
-
         const widgets = layout.widgets || {};
         Object.keys(widgets).forEach((tabId) => {
             const panel = panels.get(tabId);
