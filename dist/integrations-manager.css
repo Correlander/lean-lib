@@ -214,6 +214,14 @@
     margin-bottom: 0;
     padding-left: 1.25rem;
 }
+.lt-library-manager__provider-content {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--library-border);
+}
+.lt-library-manager__provider-content > h4 {
+    margin-top: 0;
+}
 .lt-library-manager__empty {
     padding: .75rem .25rem;
     color: var(--library-muted);

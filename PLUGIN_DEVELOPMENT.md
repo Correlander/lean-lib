@@ -73,6 +73,31 @@ EventDispatcher::add_filter_listener(
 
 Each entry needs a stable, unique provider-prefixed `id`, a non-empty `label`, and either a trusted `render` callback or a provider view plus `data` (an array or callback returning an array). `description` and integer `order` are optional. The first valid contribution for an ID wins; later duplicates are logged and skipped. Keep the filter callback declarative and inexpensive: it runs for both the tab header and panel; load connection state in the render/data callback or provider view. Render/data callbacks receive `['userId' => <current session user ID>, 'scope' => 'self']`; the Library never accepts a target user ID from the URL or contribution. The Library calls them only from Leantime 3.10.0's current-user `users/editOwn` tab and tab-content events and returns no entries if the session has no user ID. Providers own connection status, OAuth or other auth, credentials/tokens, connect/disconnect routes, permissions, CSRF checks, and action semantics. Provider action handlers must independently verify that the acting session may change the connection for that user. Keep project-specific authorization and repository configuration in the separate Project Settings contribution. Callback output and provider views are trusted plugin code; the Library escapes wrapper IDs and labels, but does not sanitize provider HTML. No provider contribution means no extra account tab.
 
+## Library plugin manager detail content
+
+Enabled providers may contribute an optional fragment to their selected entry in **Company Settings → Integrations** through `plugins.leantimelib.pluginManager.settings` (Plugin Manager Content API v1). The Library supplies the plugin list, Composer metadata, status, and lifecycle controls. This hook adds provider-owned detail/settings content inside the selected plugin card; it does not replace the provider's route or move its save/action ownership into the Library.
+
+```php
+use Leantime\Core\Events\EventDispatcher;
+
+EventDispatcher::add_filter_listener(
+    'plugins.leantimelib.pluginManager.settings',
+    static function (array $entries, array $context): array {
+        $entries[] = [
+            'apiVersion' => 1,
+            'pluginId' => 'LeanExample', // Leantime plugin folder/runtime ID
+            'render' => static fn (array $context): string => view(
+                'leanexample::manager-settings',
+                ['pluginId' => $context['pluginId']]
+            )->render(),
+        ];
+        return $entries;
+    }
+);
+```
+
+Each entry must declare `apiVersion: 1`, the exact Leantime plugin folder ID in `pluginId`, and a trusted `render` callback returning an HTML string. The callback receives only `['pluginId' => <selected folder ID>, 'scope' => 'plugin-manager']`; it runs only when that enabled plugin is selected, on the globally permission-protected manager page. The Library renders the first valid contribution for that plugin ID and logs/skips duplicates or invalid definitions. Callback output is trusted plugin HTML and is not sanitized. Providers must escape untrusted data, and any form/action in the fragment must use a provider-owned endpoint, authorization check, validation, and CSRF protection. Keep contribution discovery declarative and inexpensive; load only the selected plugin's detail data inside its renderer. Plugins without this contribution continue to use their existing settings link when available.
+
 ## GUI customization surfaces
 
 The Library settings page discovers editable surfaces from the `plugins.leantimelib.gui.surfaces` filter. To-do modal, Project Settings → Integrations, and Company Settings are registered by the Library itself. A provider contributes an editor when it has a real settings preview/editor and apply path:

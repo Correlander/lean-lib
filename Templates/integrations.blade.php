@@ -44,6 +44,14 @@
     }
     if (is_object($authors)) $authors = (array) $authors;
     if (!is_array($authors)) $authors = [];
+
+    $pluginManagerContent = null;
+    if ($selectedEntry !== null && $selectedEntry['state'] === 'installed'
+        && !empty($selectedPlugin->enabled)
+        && is_string($selectedPlugin->foldername ?? null)) {
+        $pluginManagerContent = app(\Leantime\Plugins\LeanLib\Services\PluginManagerRegistry::class)
+            ->renderSettings($selectedPlugin->foldername);
+    }
 @endphp
 
 <section class="lt-library-manager" data-library-manager>
@@ -147,6 +155,13 @@
                             @foreach ($metadataCheck['errors'] as $error)<li>{{ $error }}</li>@endforeach
                         </ul>
                     </div>
+                @endif
+
+                @if ($pluginManagerContent !== null)
+                    <section class="lt-library-manager__provider-content" data-plugin-manager-content="{{ $plugin->foldername }}">
+                        <h4>Plugin settings</h4>
+                        {!! $pluginManagerContent !!}
+                    </section>
                 @endif
 
                 <div class="lt-library-manager__settings">
