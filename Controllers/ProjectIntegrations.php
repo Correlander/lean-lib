@@ -82,7 +82,7 @@ class ProjectIntegrations
     {
         $this->permissions->authorize(ProjectsPermissions::EDIT, $projectId);
         try {
-            $input = ValidationException::validate($request->only(['tabs', 'fields', 'reset']), [
+            $input = ValidationException::validate($request->only(['tabs', 'fields', 'widgets', 'reset']), [
                 'tabs' => ['required', 'array'],
                 'tabs.order' => ['present', 'array'],
                 'tabs.order.*' => ['required', 'string', 'max:120'],
@@ -100,6 +100,17 @@ class ProjectIntegrations
                 'fields.groups' => ['present', 'array'],
                 'fields.groups.*' => ['nullable', 'array'],
                 'fields.groups.*.*' => ['required', 'string', 'max:120'],
+                'widgets' => ['nullable', 'array'],
+                'widgets.regions' => ['nullable', 'array'],
+                'widgets.regions.*' => ['nullable', 'array'],
+                'widgets.regions.*.*' => ['nullable', 'array'],
+                'widgets.regions.*.*.*' => ['required', 'string', 'max:120'],
+                'widgets.parked' => ['nullable', 'array'],
+                'widgets.parked.*' => ['required', 'string', 'max:120'],
+                'widgets.parkedTargets' => ['nullable', 'array'],
+                'widgets.parkedTargets.*' => ['nullable', 'array'],
+                'widgets.parkedTargets.*.tab' => ['required_with:widgets.parkedTargets.*', 'string', 'max:120'],
+                'widgets.parkedTargets.*.region' => ['required_with:widgets.parkedTargets.*', 'string', 'max:40', 'regex:/^[a-zA-Z][a-zA-Z0-9_-]{0,39}$/'],
                 'reset' => ['nullable', 'boolean'],
             ]);
         } catch (ValidationException $exception) {
@@ -116,16 +127,20 @@ class ProjectIntegrations
         $tabs = app(\Leantime\Plugins\LeanLib\Services\TodoTabRegistry::class);
         $sections = app(\Leantime\Plugins\LeanLib\Services\TodoSectionRegistry::class);
         $fields = app(TodoFieldRegistry::class);
+        $contentWidgets = app(\Leantime\Plugins\LeanLib\Services\TodoWidgetRegistry::class);
         if (filter_var($input['reset'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
             $tabs->resetProjectLayout($projectId);
             $sections->resetProjectLayout($projectId);
             $fields->resetProjectLayout($projectId);
+            $contentWidgets->reset($projectId);
             return response()->json(['saved' => true, 'reset' => true]);
         }
 
         $tabsSaved = $tabs->setProjectLayout($projectId, $input['tabs']['order'], $input['tabs']['visible']);
         $fieldsSaved = $fields->saveLayout($input['fields'], $projectId);
-        if (! $tabsSaved || ! $fieldsSaved) {
+        $widgets = $input['widgets'] ?? [];
+        $widgetsSaved = $contentWidgets->saveLayout($widgets['regions'] ?? [], $widgets['parked'] ?? [], $projectId, $widgets['parkedTargets'] ?? []);
+        if (! $tabsSaved || ! $fieldsSaved || ! $widgetsSaved) {
             return response()->json(['error' => 'The project To-do layout could not be saved.'], 500);
         }
         return response()->json(['saved' => true]);

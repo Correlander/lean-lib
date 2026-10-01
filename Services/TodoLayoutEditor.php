@@ -10,9 +10,10 @@ class TodoLayoutEditor
         private TodoSectionRegistry $sections,
         private TodoFieldRegistry $fields,
         private TodoSidebarSectionRegistry $sidebarSections,
+        private TodoWidgetRegistry $contentWidgets,
     ) {}
 
-    /** One ticket-like canvas for instance defaults; parked items stay in the canvas. */
+    /** One ticket-like canvas for instance defaults; parked items are shared across tabs. */
     public function renderGlobalControls(array $tabs, array $sections): string
     {
         return $this->renderWorkspace(null, true);
@@ -23,9 +24,11 @@ class TodoLayoutEditor
         $global = $projectId === null;
         $layout = $this->fields->getLayout($projectId);
         $allTabs = $this->tabs->getTabs(null, true, $projectId);
+        $tabWidgets = $this->tabs->getTabWidgets($projectId);
+        $contentWidgetLayout = $this->contentWidgets->layout(null, $projectId);
         $sectionDefinitions = $this->sidebarSections->definitions();
         $sectionMap = array_column($sectionDefinitions, null, 'id');
-        $hasProjectOverride = ! $global && ($this->fields->hasProjectOverride($projectId) || $this->tabs->hasProjectLayout($projectId));
+        $hasProjectOverride = ! $global && ($this->fields->hasProjectOverride($projectId) || $this->tabs->hasProjectLayout($projectId) || $this->contentWidgets->hasProjectLayout($projectId));
         $attributes = ' data-library-workspace';
         if (! $global) $attributes .= ' data-can-edit="'.($canEdit ? '1' : '0').'"';
 
@@ -40,7 +43,7 @@ class TodoLayoutEditor
         $html .= '<section class="lt-library-workspace"'.$attributes.'>';
         if ($global) $html .= '<input type="hidden" name="sidebarSectionsPresent" value="1">';
         if (! $global) {
-            $html .= '<header class="lt-library-project-layout__heading"><h3>To-do modal layout</h3><p>Arrange tabs, detail fields, sidebar sections, and below-save widgets for this project.</p></header>';
+            $html .= '<header class="lt-library-project-layout__heading"><h3>To-do modal layout</h3><p>Switch tabs to preview their content. Detail fields and sidebar sections stay on Details; parked widgets are available across tabs.</p></header>';
             $html .= '<p data-project-layout-status role="status">Projects use instance defaults until this layout is saved.</p>';
         }
         $html .= '<div class="lt-library-layout-stage"><div class="lt-library-ticket">';
@@ -52,46 +55,51 @@ class TodoLayoutEditor
             $html .= '<button type="button" class="lt-library-ticket__reset-button" data-project-layout-reset'.(!$canEdit || !$hasProjectOverride ? ' disabled' : '').' data-tooltip="Reset this project to instance-level defaults" aria-label="Reset this project to instance-level defaults">×</button>';
         }
         $html .= '</div>';
+        $previewTabs = [];
+        foreach ($allTabs as $tab) if ($tab['enabled']) $previewTabs[] = $tab['id'];
+        $activePreviewTab = in_array($tabWidgets['activeTab'] ?? null, $previewTabs, true) ? $tabWidgets['activeTab'] : ($previewTabs[0] ?? 'ticketdetails');
         $html .= '<div class="lt-library-ticket__tabstrip"><ol class="lt-library-zone" data-library-zone="tabs">';
         foreach ($allTabs as $tab) {
-            if ($tab['enabled']) $html .= $this->widget('tabs', $tab['id'], $tab['label'], $tab['icon'], 'tabs', $tab['builtin'] ? 'Leantime tab' : 'Plugin tab', $global, $canEdit);
+            if ($tab['enabled']) $html .= $this->widget('tabs', $tab['id'], $tab['label'], $tab['icon'], 'tabs', $tab['builtin'] ? 'Leantime tab' : 'Plugin tab', $global, $canEdit, null, $tab['id']);
         }
-        $html .= '</ol></div><div class="lt-library-ticket__body"><div class="lt-library-ticket__main">';
-        $html .= '<ol class="lt-library-zone lt-library-ticket__main-zone" data-library-zone="main">';
-        foreach ($layout['main'] as $id) $html .= $this->fieldWidget($id, 'main', $global, $canEdit);
-        $html .= '</ol><div class="lt-library-ticket__actions" aria-label="To-do save controls"><button type="button" class="btn btn-primary" disabled>Save</button> <button type="button" class="btn btn-default" disabled>Save &amp; Close</button></div>';
-        $html .= '<section class="lt-library-ticket__auxiliary"><ol class="lt-library-zone" data-library-zone="auxiliary">';
-        foreach ($layout['auxiliary'] as $id) $html .= $this->fieldWidget($id, 'auxiliary', $global, $canEdit);
-        $html .= '</ol></section></div><aside class="lt-library-ticket__sidebar"><div class="lt-library-sidebar-units lt-library-zone" data-library-zone="sidebar">';
-
+        $html .= '</ol></div><div class="lt-library-ticket__preview-tabs">';
         $groupedIds = [];
         foreach ($layout['groups'] as $sectionId => $children) foreach ($children as $childId) $groupedIds[$childId] = $sectionId;
-        foreach ($layout['sidebar'] as $id) {
-            if (isset($sectionMap[$id])) {
-                $children = array_values(array_intersect($layout['sidebar'], $layout['groups'][$id] ?? []));
-                $html .= $this->sidebarSectionWidget($sectionMap[$id], $children, 'sidebar', $global, $canEdit);
-                continue;
-            }
-            if (isset($groupedIds[$id])) continue;
-            $html .= $this->fieldWidget($id, 'sidebar', $global, $canEdit);
-        }
-        $html .= '</div>';
-        if ($global) $html .= '<button type="button" class="lt-library-add-section" data-sidebar-section-add><span aria-hidden="true">+</span> Add sidebar section</button>';
-        $html .= '</aside><aside class="lt-library-ticket__parked"><header><strong>Parked Widgets</strong><small>Hidden from the To-do modal</small></header><ol class="lt-library-zone" data-library-zone="parked">';
-        foreach ($layout['hidden'] as $id) {
-            if (isset($sectionMap[$id])) {
-                $children = array_values(array_intersect($layout['sidebar'], $layout['groups'][$id] ?? []));
-                $html .= $this->sidebarSectionWidget($sectionMap[$id], $children, 'parked', $global, $canEdit);
-                continue;
-            }
-            $html .= $this->fieldWidget($id, 'parked', $global, $canEdit, $groupedIds[$id] ?? null);
+        $tabPanels = [
+            'ticketdetails' => $this->renderTodoDetailsPreview($layout, $global, $canEdit, $sectionMap, $groupedIds, $tabWidgets['ticketdetails'] ?? null),
+            'files' => '<div class="lt-library-preview-native">Attachment upload, file list, and file actions. Leantime owns this tab’s component layout.</div>',
+            'timesheet' => '<div class="lt-library-preview-native">Time entry form, logged time, and timer controls. Leantime owns this tab’s component layout.</div>',
+        ];
+        foreach ($allTabs as $tab) {
+            if (!$tab['builtin']) $tabPanels[$tab['id']] = '<div class="lt-library-preview-native">Plugin provided tab content. The tab can be selected and ordered here; the provider owns its component layout.</div>';
         }
         foreach ($allTabs as $tab) {
-            if (! $tab['enabled']) $html .= $this->widget('tabs', $tab['id'], $tab['label'], $tab['icon'], 'parked', $tab['builtin'] ? 'Leantime tab' : 'Plugin tab', $global, $canEdit);
+            if (!$tab['enabled']) continue;
+            $html .= '<section data-todo-preview-panel="'.$this->e($tab['id']).'"'.($tab['id'] === $activePreviewTab ? '' : ' hidden').'><header>'.$this->e($tab['label']).'</header>';
+            $html .= $tabPanels[$tab['id']] ?? '<div class="lt-library-preview-native">Tab content</div>';
+            $html .= $this->renderContentWidgetZones($contentWidgetLayout, $tab['id'], $global, $canEdit);
+            $html .= '</section>';
         }
-        $html .= '</ol></aside></div></div>';
+        $html .= '</div>';
+        if ($global || $canEdit) {
+            $html .= '<aside class="lt-library-ticket__parked"><header><strong>Parked widgets</strong><small>Available across all tabs</small></header><ol class="lt-library-zone" data-library-zone="parked">';
+            foreach ($layout['hidden'] as $id) {
+                if (isset($sectionMap[$id])) $html .= $this->sidebarSectionWidget($sectionMap[$id], [], 'parked', $global, $canEdit);
+                else $html .= $this->fieldWidget($id, 'parked', $global, $canEdit, null, 'ticketdetails');
+            }
+            foreach ($contentWidgetLayout['parked'] as $id) {
+                $target = $contentWidgetLayout['parkedTargets'][$id] ?? [];
+                $html .= $this->contentWidget($contentWidgetLayout['definitions'][$id], 'parked', $canEdit, $target['tab'] ?? null, $target['region'] ?? null);
+            }
+            $html .= '</ol></aside>';
+        }
+        if ($global) $html .= '<div hidden data-todo-content-widget-inputs></div>';
+        if ($global) $html .= '<input type="hidden" name="tabWidgetsActive" data-todo-active-tab value="'.$this->e($activePreviewTab).'">';
+        $detailWidgets = $tabWidgets['ticketdetails'] ?? array_merge($layout['main'], $layout['sidebar'], $layout['auxiliary']);
+        $detailWidgets = array_values(array_diff($detailWidgets, $layout['hidden']));
+        foreach ($detailWidgets as $widgetId) $html .= '<input type="hidden" name="tabWidgets[ticketdetails][]" value="'.$this->e($widgetId).'" data-todo-tab-widget-input="ticketdetails">';
         if (! $global && $canEdit) $html .= '<div class="lt-library-layout-editor__actions"><button type="button" class="btn btn-primary" data-project-layout-save>Save project layout</button></div>';
-        $html .= '</section>';
+        $html .= '</div></section>';
         if (! $global) $html .= '</div></section>';
         return $html;
     }
@@ -101,7 +109,62 @@ class TodoLayoutEditor
         return $this->renderWorkspace($projectId, $canEdit);
     }
 
-    private function sidebarSectionWidget(array $definition, array $childIds, string $zone, bool $global, bool $canEdit): string
+    private function renderContentWidgetZones(array $layout, string $tabId, bool $global, bool $canEdit): string
+    {
+        $regions = $layout['regions'][$tabId] ?? [];
+        $names = array_values(array_unique(array_merge(['content', 'main', 'sidebar', 'auxiliary'], array_keys($regions))));
+        $html = '<section class="lt-library-generic-widgets"><h4>Generic widgets</h4><div class="lt-library-generic-widgets__grid">';
+        foreach ($names as $region) {
+            $html .= '<div class="lt-library-generic-widgets__slot"><strong>'.$this->e(ucfirst($region)).'</strong><ol data-todo-generic-region="'.$this->e($tabId).':'.$this->e($region).'">';
+            foreach ($regions[$region] ?? [] as $id) {
+                if (isset($layout['definitions'][$id])) $html .= $this->contentWidget($layout['definitions'][$id], $tabId, $canEdit);
+            }
+            $html .= '</ol></div>';
+        }
+        return $html.'</div></section>';
+    }
+
+    private function contentWidget(array $definition, string $tabId, bool $canEdit, ?string $returnTab = null, ?string $returnRegion = null): string
+    {
+        $id = $this->e((string) ($definition['id'] ?? ''));
+        $label = $this->e((string) ($definition['label'] ?? 'Widget'));
+        $zone = $tabId === 'parked' ? 'parked' : $tabId;
+        $parked = $tabId === 'parked';
+        return '<li class="lt-library-widget lt-library-content-widget" data-todo-content-widget="'.$id.'" data-default-tab="'.$this->e((string) ($definition['tab'] ?? 'ticketdetails')).'" data-widget-tab="'.$this->e($zone).'" data-default-region="'.$this->e((string) ($definition['region'] ?? 'content')).'" data-return-tab="'.$this->e($returnTab ?? (string) ($definition['tab'] ?? 'ticketdetails')).'" data-return-region="'.$this->e($returnRegion ?? (string) ($definition['region'] ?? 'content')).'" data-placement="'.$this->e((string) ($definition['placement'] ?? 'region')).'" draggable="'.($canEdit ? 'true' : 'false').'">'
+            .'<span class="lt-library-widget__grip" aria-hidden="true">⠿</span><span class="lt-library-widget__label">'.$label.'</span><small>Generic plugin widget</small>'
+            .($canEdit ? '<button type="button" data-todo-content-park>'.($parked ? '+' : '×').'</button>' : '').'</li>';
+    }
+
+    private function renderTodoDetailsPreview(array $layout, bool $global, bool $canEdit, array $sectionMap, array $groupedIds, ?array $orderedWidgets = null): string
+    {
+        $main = is_array($orderedWidgets) ? array_values(array_intersect($orderedWidgets, $layout['main'])) : $layout['main'];
+        $sidebar = is_array($orderedWidgets) ? array_values(array_intersect($orderedWidgets, $layout['sidebar'])) : $layout['sidebar'];
+        $auxiliary = is_array($orderedWidgets) ? array_values(array_intersect($orderedWidgets, $layout['auxiliary'])) : $layout['auxiliary'];
+        if (is_array($orderedWidgets)) {
+            $ranks = array_flip($orderedWidgets);
+            foreach ([$main, $sidebar, $auxiliary] as &$orderedIds) usort($orderedIds, static fn ($left, $right) => ($ranks[$left] ?? PHP_INT_MAX) <=> ($ranks[$right] ?? PHP_INT_MAX));
+            unset($orderedIds);
+        }
+        $html = '<div class="lt-library-ticket__body"><div class="lt-library-ticket__main"><ol class="lt-library-zone lt-library-ticket__main-zone" data-library-zone="main">';
+        foreach ($main as $id) $html .= $this->fieldWidget($id, 'main', $global, $canEdit, null, 'ticketdetails');
+        $html .= '</ol><div class="lt-library-ticket__actions" aria-label="To-do save controls"><button type="button" class="btn btn-primary" disabled>Save</button> <button type="button" class="btn btn-default" disabled>Save &amp; Close</button></div><section class="lt-library-ticket__auxiliary"><ol class="lt-library-zone" data-library-zone="auxiliary">';
+        foreach ($auxiliary as $id) $html .= $this->fieldWidget($id, 'auxiliary', $global, $canEdit, null, 'ticketdetails');
+        $html .= '</ol></section></div><aside class="lt-library-ticket__sidebar"><div class="lt-library-sidebar-units lt-library-zone" data-library-zone="sidebar">';
+        foreach ($sidebar as $id) {
+            if (isset($sectionMap[$id])) {
+                $children = array_values(array_intersect($layout['sidebar'], $layout['groups'][$id] ?? []));
+                $html .= $this->sidebarSectionWidget($sectionMap[$id], $children, 'sidebar', $global, $canEdit, 'ticketdetails');
+                continue;
+            }
+            if (isset($groupedIds[$id])) continue;
+            $html .= $this->fieldWidget($id, 'sidebar', $global, $canEdit, null, 'ticketdetails');
+        }
+        $html .= '</div>';
+        if ($global) $html .= '<button type="button" class="lt-library-add-section" data-sidebar-section-add><span aria-hidden="true">+</span> Add sidebar section</button>';
+        return $html.'</aside></div>';
+    }
+
+    private function sidebarSectionWidget(array $definition, array $childIds, string $zone, bool $global, bool $canEdit, string $tabId = 'ticketdetails'): string
     {
         $id = $definition['id'];
         $label = $definition['label'];
@@ -121,27 +184,27 @@ class TodoLayoutEditor
         }
         if ($global) $html .= '<input type="hidden" data-placement-input name="fieldLayout['.$zone.'][]" value="'.$this->e($id).'">';
         $html .= '</h3><ol class="lt-library-zone" data-library-zone="sidebar" data-section-children="'.$this->e($id).'">';
-        foreach ($childIds as $childId) $html .= $this->fieldWidget($childId, 'sidebar', $global, $canEdit, $id);
+        foreach ($childIds as $childId) $html .= $this->fieldWidget($childId, 'sidebar', $global, $canEdit, $id, $tabId);
         return $html.'</ol></section>';
     }
 
-    private function fieldWidget(string $id, string $zone, bool $global, bool $canEdit, ?string $parentSection = null): string
+    private function fieldWidget(string $id, string $zone, bool $global, bool $canEdit, ?string $parentSection = null, string $tabId = 'ticketdetails'): string
     {
         $field = $this->fields->fields()[$id] ?? null;
         if (! $field) return '';
         $kind = $field['kind'] ?? 'fields';
         $type = $kind === 'sections' ? 'Plugin section' : ($kind === 'sectionHeader' ? 'Sidebar section' : 'To-do field');
-        return $this->widget($kind, $id, $field['label'], $field['icon'] ?? '', $zone, $type, $global, $canEdit, $parentSection);
+        return $this->widget($kind, $id, $field['label'], $field['icon'] ?? '', $zone, $type, $global, $canEdit, $parentSection, $tabId);
     }
 
-    private function widget(string $kind, string $id, string $label, string $icon, string $zone, string $type, bool $global, bool $canEdit, ?string $parentSection = null): string
+    private function widget(string $kind, string $id, string $label, string $icon, string $zone, string $type, bool $global, bool $canEdit, ?string $parentSection = null, ?string $tabId = null): string
     {
         $escapedId = $this->e($id);
         $button = ! $canEdit ? '' : ($zone === 'parked'
             ? '<button type="button" data-widget-add aria-label="Show '.$this->e($label).'" title="Show">+</button>'
             : '<button type="button" data-widget-park aria-label="Hide '.$this->e($label).'" title="Hide">×</button>');
         $defaultZone = $kind === 'fields' ? ($this->fields->fields()[$id]['zone'] ?? 'main') : ($kind === 'tabs' ? 'tabs' : 'sidebar');
-        $html = '<li class="lt-library-widget" data-widget-kind="'.$kind.'" data-widget-id="'.$escapedId.'" data-default-zone="'.$defaultZone.'" data-widget-zone="'.$zone.'"'.($parentSection !== null ? ' data-parent-section="'.$this->e($parentSection).'"' : '').' draggable="'.($canEdit ? 'true' : 'false').'"'.($zone === 'parked' ? ' aria-label="Hidden widget"' : '').'><span class="lt-library-widget__grip" aria-hidden="true">⠿</span>';
+        $html = '<li class="lt-library-widget" data-widget-kind="'.$kind.'" data-widget-id="'.$escapedId.'" data-default-zone="'.$defaultZone.'" data-widget-zone="'.$zone.'"'.($tabId !== null ? ' data-default-tab="'.$this->e($tabId).'" data-widget-tab="'.$this->e($tabId).'"' : '').($parentSection !== null ? ' data-parent-section="'.$this->e($parentSection).'"' : '').' draggable="'.($canEdit ? 'true' : 'false').'"'.($zone === 'parked' ? ' aria-label="Hidden widget"' : '').'><span class="lt-library-widget__grip" aria-hidden="true">⠿</span>';
         if ($icon !== '') $html .= '<i class="'.$this->e($icon).'" aria-hidden="true"></i>';
         $html .= '<span class="lt-library-widget__label">'.$this->e($label).'</span>';
         if ($kind === 'fields') {

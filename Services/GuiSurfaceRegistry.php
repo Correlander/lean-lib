@@ -9,7 +9,7 @@ use Throwable;
 /** Discovers and validates surfaces that can be edited from Library settings. */
 class GuiSurfaceRegistry
 {
-    public const API_VERSION = 1;
+    public const API_VERSION = 2;
     public const FILTER = 'plugins.leantimelib.gui.surfaces';
 
     /**
@@ -54,6 +54,15 @@ class GuiSurfaceRegistry
                 }
                 return $registry->renderGlobalOrderEditor();
             },
+        ], [
+            'id' => 'company-settings',
+            'label' => 'Company settings',
+            'icon' => 'fa-solid fa-building',
+            'description' => 'Arrange the native Company Settings tabs and their content regions.',
+            'order' => 20,
+            'overrideCapabilities' => ['order', 'visibility', 'content'],
+            'provider' => 'Leantime Library',
+            'renderEditor' => static fn (array $context = []): string => app(CompanySettingsEditor::class)->render(),
         ]];
         $contributions = EventDispatcher::dispatch_filter(self::FILTER, [], [], 'leantime');
         if (! is_array($contributions)) {
@@ -61,7 +70,7 @@ class GuiSurfaceRegistry
             $contributions = [];
         }
 
-        $seen = ['todo-modal' => true, 'project-integrations' => true];
+        $seen = ['todo-modal' => true, 'project-integrations' => true, 'company-settings' => true];
         $surfaces = $builtIn;
         foreach ($contributions as $index => $surface) {
             if (! is_array($surface)) {

@@ -4,28 +4,6 @@
     const preferences = window.leanLibraryPreferences || {};
     const appUrl = String(preferences.appUrl || '').replace(/\/$/, '');
 
-    function removeExploreAppsTab() {
-        const nav = document.querySelector('.lt-tabs-group[aria-label="Apps"]');
-        if (!nav) return;
-        nav.querySelectorAll('a[href]').forEach(function (link) {
-            try {
-                if (new URL(link.href, window.location.href).pathname.replace(/\/$/, '').toLowerCase().endsWith('/plugins/marketplace')) {
-                    const item = link.closest('li');
-                    if (item) item.remove();
-                }
-            } catch (ignored) {}
-        });
-    }
-
-    function hideMarketplace() {
-        if (!preferences.hideExploreApps) return;
-        if (/\/plugins\/marketplace\/?$/i.test(window.location.pathname)) {
-            window.location.replace(appUrl + '/plugins/myapps');
-            return;
-        }
-        removeExploreAppsTab();
-    }
-
     function simplifyInviteFlow() {
         if (!preferences.fastOnboarding) return;
         const invitePath = window.location.pathname.match(/\/auth\/userinvite\/[^/]+/i);
@@ -77,7 +55,6 @@
     }
 
     function start() {
-        hideMarketplace();
         simplifyInviteFlow();
     }
 

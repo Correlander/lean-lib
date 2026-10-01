@@ -33,10 +33,18 @@ class TodoTabRegistry
 
         // The native showTicketModal dispatches ticketTabs while building its
         // header list, before ticketTabsContent panels and before JS tab init.
+        $tabWidgets = $this->readTabWidgets($ticket);
+        $fields = app(TodoFieldRegistry::class)->getLayout(is_object($ticket) ? (int) ($ticket->projectId ?? 0) : null);
+        $widgetRanks = array_flip($tabWidgets['ticketdetails'] ?? []);
+        foreach (['main', 'sidebar', 'auxiliary'] as $zone) {
+            usort($fields[$zone], static fn ($left, $right) => ($widgetRanks[$left] ?? PHP_INT_MAX) <=> ($widgetRanks[$right] ?? PHP_INT_MAX));
+        }
         $layout = [
             'tabs' => array_column($this->getTabs($ticket), 'id'),
-            'fields' => app(TodoFieldRegistry::class)->getLayout(is_object($ticket) ? (int) ($ticket->projectId ?? 0) : null),
+            'fields' => $fields,
             'sidebarSections' => app(TodoSidebarSectionRegistry::class)->definitions(),
+            'tabWidgets' => $tabWidgets,
+            'contentWidgets' => app(TodoWidgetRegistry::class)->layout($ticket),
         ];
         $layoutJson = json_encode($layout, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR);
         echo '<li class="leantimelib-todo-layout-order" data-layout="'.htmlspecialchars($layoutJson, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'" hidden aria-hidden="true"></li>';
@@ -182,7 +190,10 @@ class TodoTabRegistry
 
     public function resetProjectLayout(int $projectId): void
     {
-        if ($projectId > 0) $this->settings->deleteSetting('projectsettings.'.$projectId.self::PROJECT_LAYOUT_SUFFIX);
+        if ($projectId > 0) {
+            $this->settings->deleteSetting('projectsettings.'.$projectId.self::PROJECT_LAYOUT_SUFFIX);
+            $this->settings->deleteSetting('projectsettings.'.$projectId.'.leantimelib.todo.detail.tabWidgets');
+        }
     }
 
     public function hasProjectLayout(int $projectId): bool
@@ -196,6 +207,62 @@ class TodoTabRegistry
     {
         $this->settings->deleteSetting(self::ORDER_SETTING);
         $this->settings->deleteSetting(self::DISABLED_SETTING);
+        $this->settings->deleteSetting('leantimelib.todo.detail.tabWidgets');
+        app(TodoWidgetRegistry::class)->reset();
+    }
+
+    private function readTabWidgets(mixed $ticket = null): array
+    {
+        $projectId = (int) (is_object($ticket) ? ($ticket->projectId ?? 0) : 0);
+        if ($projectId > 0) {
+            $project = $this->settings->getSetting('projectsettings.'.$projectId.'.leantimelib.todo.detail.tabWidgets', null);
+            if (is_string($project)) {
+                $decoded = json_decode($project, true);
+                if (is_array($decoded)) return $decoded;
+            }
+        }
+        $value = $this->settings->getSetting('leantimelib.todo.detail.tabWidgets', '{}');
+        if (!is_string($value)) return [];
+        $decoded = json_decode($value, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    public function getTabWidgets(?int $projectId = null): array
+    {
+        if ($projectId && $projectId > 0) {
+            $project = $this->settings->getSetting('projectsettings.'.$projectId.'.leantimelib.todo.detail.tabWidgets', null);
+            if (is_string($project)) {
+                $decoded = json_decode($project, true);
+                if (is_array($decoded)) return $decoded;
+            }
+        }
+        return $this->readTabWidgets();
+    }
+
+    public function saveTabWidgets(array $widgets, ?int $projectId = null): bool
+    {
+        $tabs = array_column($this->getTabs(null, true), 'id');
+        $fields = app(TodoFieldRegistry::class)->fields();
+        $normalized = [];
+        $activeTab = is_string($widgets['activeTab'] ?? null) ? $widgets['activeTab'] : null;
+        unset($widgets['activeTab']);
+        $placed = [];
+        foreach ($widgets as $tabId => $ids) {
+            if (!is_string($tabId) || !in_array($tabId, $tabs, true) || !is_array($ids)) continue;
+            foreach ($ids as $id) {
+                if (!is_string($id) || !isset($fields[$id]) || ($fields[$id]['kind'] ?? '') === 'sectionHeader') continue;
+                if (($fields[$id]['zone'] ?? '') === 'auxiliary' && $tabId !== 'ticketdetails') continue;
+                if (isset($placed[$id])) continue;
+                if (!isset($normalized[$tabId])) $normalized[$tabId] = [];
+                $normalized[$tabId][] = $id;
+                $placed[$id] = true;
+            }
+        }
+        $key = $projectId && $projectId > 0
+            ? 'projectsettings.'.$projectId.'.leantimelib.todo.detail.tabWidgets'
+            : 'leantimelib.todo.detail.tabWidgets';
+        if ($activeTab !== null && in_array($activeTab, $tabs, true)) $normalized['activeTab'] = $activeTab;
+        return $this->settings->saveSetting($key, json_encode($normalized, JSON_THROW_ON_ERROR));
     }
 
     private function readProjectLayout(int $projectId): array

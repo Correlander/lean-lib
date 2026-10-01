@@ -128,6 +128,30 @@
         return { main: ids('main'), auxiliary: ids('auxiliary'), sidebar: ids('sidebar'), hidden: ids('parked'), groups: groups };
     }
 
+    function getContentWidgetState(control) {
+        const regions = {};
+        control.querySelectorAll('[data-todo-generic-region]').forEach((region) => {
+            const key = region.dataset.todoGenericRegion;
+            if (key === 'parked') return;
+            const [tabId, regionId] = key.split(':');
+            regions[tabId] = regions[tabId] || {};
+            regions[tabId][regionId] = Array.from(region.querySelectorAll(':scope > [data-todo-content-widget]')).map((item) => item.dataset.todoContentWidget);
+        });
+        const parked = control.querySelector('[data-todo-generic-region="parked"]');
+        const parkedTargets = {};
+        if (parked) parked.querySelectorAll(':scope > [data-todo-content-widget]').forEach((item) => {
+            parkedTargets[item.dataset.todoContentWidget] = {
+                tab: item.dataset.returnTab || item.dataset.defaultTab || 'ticketdetails',
+                region: item.dataset.returnRegion || item.dataset.defaultRegion || 'content'
+            };
+        });
+        return {
+            regions: regions,
+            parked: parked ? Array.from(parked.querySelectorAll(':scope > [data-todo-content-widget]')).map((item) => item.dataset.todoContentWidget) : [],
+            parkedTargets: parkedTargets
+        };
+    }
+
     async function saveProjectLayout(control, reset) {
         const status = control.querySelector('[data-project-layout-status]');
         const buttons = control.querySelectorAll('[data-project-layout-save], [data-project-layout-reset]');
@@ -136,10 +160,11 @@
         try {
             const tabs = getProjectState(control, 'tabs', 'tabs');
             const fields = getFieldState(control);
+            const widgets = getContentWidgetState(control);
             const response = await fetch(control.dataset.endpoint, {
                 method: 'POST', credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': control.dataset.csrf || '' },
-                body: JSON.stringify({ tabs: tabs, fields: fields, reset: !!reset })
+                body: JSON.stringify({ tabs: tabs, fields: fields, widgets: widgets, reset: !!reset })
             });
             const result = await response.json();
             if (!response.ok) {

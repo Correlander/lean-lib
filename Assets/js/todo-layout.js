@@ -289,6 +289,40 @@
         return true;
     }
 
+    function applyContentWidgets(container, layout) {
+        const saved = layout && layout.contentWidgets;
+        const stash = container.querySelector('[data-leantimelib-todo-widget-stash]');
+        if (!saved || !saved.regions) return;
+        Object.keys(saved.regions).forEach((tabId) => {
+            const panel = container.querySelector('#' + CSS.escape(tabId));
+            if (!panel) return;
+            Object.keys(saved.regions[tabId] || {}).forEach((regionName) => {
+                const ids = saved.regions[tabId][regionName] || [];
+                if (!ids.length) return;
+                let zone = panel.querySelector('[data-leantimelib-todo-region="' + CSS.escape(regionName) + '"]');
+                if (!zone) {
+                    zone = document.createElement('div');
+                    zone.className = 'leantimelib-todo-generic-region';
+                    zone.dataset.leantimelibTodoRegion = regionName;
+                    if (tabId === 'ticketdetails' && regionName === 'main') {
+                        zone = panel.querySelector('[data-leantimelib-field-zone="main"]') || zone;
+                    } else if (tabId === 'ticketdetails' && regionName === 'sidebar') {
+                        zone = panel.querySelector('.col-md-3') || zone;
+                    } else if (tabId === 'ticketdetails' && regionName === 'auxiliary') {
+                        zone = panel.querySelector('[data-leantimelib-field-zone="auxiliary"]') || zone;
+                    }
+                    if (!zone.isConnected || !panel.contains(zone)) panel.appendChild(zone);
+                    else if (!zone.dataset.leantimelibTodoRegion) zone.dataset.leantimelibTodoRegion = regionName;
+                }
+                ids.forEach((id) => {
+                    const widget = container.querySelector('[data-leantimelib-todo-widget="' + CSS.escape(id) + '"]');
+                    if (widget) zone.appendChild(widget);
+                });
+            });
+        });
+        if (stash) stash.remove();
+    }
+
     function wrapAuxiliary(details, kind) {
         const iconSelector = kind === 'subtasks' ? '.fa-sitemap' : '.fa-comments';
         const heading = Array.from(details.querySelectorAll('h4')).find((item) => item.querySelector(iconSelector));
@@ -336,6 +370,7 @@
             }
             return false;
         }
+        applyContentWidgets(container, layout);
         delete container.dataset.leantimelibLayoutWarning;
         const signature = JSON.stringify(layout);
         if (container.dataset.leantimelibLayoutApplied !== signature) {

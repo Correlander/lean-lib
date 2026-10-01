@@ -48,7 +48,7 @@ The `data` callback is optional when a view needs no project-specific data. The 
 
 ## GUI customization surfaces
 
-The Library settings page discovers editable surfaces from the `plugins.leantimelib.gui.surfaces` filter. To-do modal is registered by the Library itself. A provider contributes an editor when it has a real settings preview/editor and apply path:
+The Library settings page discovers editable surfaces from the `plugins.leantimelib.gui.surfaces` filter. To-do modal, Project Settings → Integrations, and Company Settings are registered by the Library itself. A provider contributes an editor when it has a real settings preview/editor and apply path:
 
 ```php
 use Leantime\Core\Events\EventDispatcher;
@@ -57,7 +57,7 @@ EventDispatcher::add_filter_listener(
     'leantime.plugins.leantimelib.gui.surfaces',
     static function (array $surfaces): array {
         $surfaces[] = [
-            'apiVersion' => 1,
+            'apiVersion' => 2,
             'id' => 'myplugin-project-panel',
             'label' => 'My Plugin panel',
             'icon' => 'fa-solid fa-code-branch',
@@ -74,9 +74,38 @@ EventDispatcher::add_filter_listener(
 
 Surface IDs must be stable and unique. `overrideCapabilities` may include `order`, `visibility`, and/or `content`; only declare controls the provider can actually apply. The editor callback receives a context array and returns a trusted Blade-rendered fragment, without a nested `<form>`. In the Library page, the context is empty; in Project Settings → Integrations it includes `projectId` and `canEdit`. A surface that supports project overrides must render the project-specific controls when `projectId` is present, and reset those controls to the current instance default. Its save endpoint remains provider-owned. Invalid or unsupported contributions are logged and skipped without taking down other surfaces.
 
-For simple, data-driven editors, providers should describe controls/components with stable IDs, labels, types, defaults, and supported placement/visibility capabilities. The current API registers and renders surface editors; generic shared layout storage is a follow-on implementation. The Library cannot safely infer controls by inspecting arbitrary Blade output. A provider-specific editor and apply adapter is the supported fallback for complex UI.
+For data-driven layout editors, model tabs, widgets, regions, and placement constraints independently. Tabs are named containers whose visible content panels share the selected tab state. Widgets with `placement: 'any'` may move between any compatible tab and region; widgets with a required region or container type, such as sidebar dropdowns, remain restricted to that region. Parked widgets use one shared pool across tabs, but retain their declared constraints and preferred destination so restoring them returns to a valid location. Generic containers should not acquire tab-specific identity unless their behavior requires it. All IDs and placement values are provider-owned stable metadata; user-authored HTML/templates are never executed.
 
-The To-do canvas currently uses the Library's specialized editor and To-do registries. Project Settings → Integrations ordering is also a built-in surface: the Library controls the instance order, and projects can opt into an order-only override. Both editors appear under the same surface selector in the Library settings page and in Project Settings → Integrations.
+Providers may contribute Company Settings content blocks through `plugins.leantimelib.gui.companySettings.widgets`. Each definition has a stable ID, label, required home `region`, an optional default `tab`, a `placement` value (`any` or `region`), and either a trusted `render` callback or a generic template (`content`, `notice`, or `link`) with a `data` callback. `any` permits movement between supported native tabs and generic regions (`content`, `sidebar`, `auxiliary`) or a region declared by a provider; `region` keeps the widget in its required region. Parked widgets are shared across tabs. The Library stores order and placement only; provider code remains responsible for the content and behavior. Callbacks receive a stable `widgetId`, not the current tab, so their content remains tab-agnostic as the widget moves. Provider callbacks are trusted plugin code; no user-authored PHP, Blade, JavaScript, or HTML is executed. Company Settings tab definitions come from Leantime 3.10.0 and are not user-created by this editor. The native Details and API Keys panels are represented as intact generic containers; provider content is moved into Library-managed regions inside the selected panel.
+
+Providers may also contribute tab-agnostic content widgets to the To-do modal through `plugins.leantimelib.gui.todo.widgets`:
+
+```php
+EventDispatcher::add_filter_listener(
+    'plugins.leantimelib.gui.todo.widgets',
+    static function (array $widgets): array {
+        $widgets[] = [
+            'id' => 'myplugin.status',
+            'label' => 'My Plugin status',
+            'tab' => 'ticketdetails',
+            'region' => 'content',
+            'placement' => 'any',
+            'template' => 'notice',
+            'data' => static fn ($ticket, array $context): array => [
+                'title' => 'Status',
+                'body' => 'Status for ticket '.($ticket->id ?? ''),
+            ],
+        ];
+        return $widgets;
+    }
+);
+```
+
+The `tab` and `region` define a widget's initial destination. `placement: 'any'` allows moving it to any supported tab and region; `placement: 'region'` restricts it to its declared region. Widgets share one parked pool and retain their last valid destination when restored. `template` may be `content`, `notice`, or `link`; the Library escapes text data and only emits HTTP(S) or site-local links. For complex markup, provide a trusted `render` callback instead; it receives `($ticket, $context)`, where `$context['widgetId']` is stable and no active-tab value is supplied. The callback must return a string of provider-owned HTML and must not emit nested forms inside the native ticket form. Project overrides store placement and parked destinations separately from instance defaults.
+
+For general data-driven editors, providers should describe controls/components with stable IDs, labels, types, defaults, and supported placement/visibility capabilities. The Library cannot safely infer controls by inspecting arbitrary Blade output. A provider-specific editor and apply adapter is the supported fallback for complex UI.
+
+The To-do canvas uses Library widget/tab registries and the Library editor. Its tab strip is selectable and parked widgets share a pool; native Files/Timesheet and contributed tabs are previewed as provider-owned containers, while native detail fields remain constrained to ticket details and supported main/sidebar/auxiliary regions. Project Settings → Integrations ordering is also a built-in surface: the Library controls the instance order, and projects can opt into an order-only override. Company Settings uses the core `tabs`/`tabsContent` dispatch events to expose native settings panels and a Library-owned Integrations tab. The editors appear under the same surface selector in Library settings.
 
 ## Runtime and project defaults
 

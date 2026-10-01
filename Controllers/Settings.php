@@ -9,6 +9,7 @@ use Leantime\Core\Controller\Frontcontroller;
 use Leantime\Core\Exceptions\ValidationException;
 use Leantime\Domain\Plugins\Permissions\PluginsPermissions;
 use Leantime\Domain\Setting\Services\Setting as SettingService;
+use Leantime\Domain\Plugins\Services\Plugins as PluginService;
 use Leantime\Plugins\LeanLib\Services\TodoSectionRegistry;
 use Leantime\Plugins\LeanLib\Services\TodoFieldRegistry;
 use Leantime\Plugins\LeanLib\Services\TodoSidebarSectionRegistry;
@@ -65,7 +66,7 @@ class Settings extends Controller
     public function post($params)
     {
         $wantsJson = request()->expectsJson();
-        $input = $this->incomingRequest->only(['tabOrder', 'tabEnabled', 'fieldLayout', 'sidebarSectionsPresent', 'sidebarSections', 'projectIntegrationOrder', 'hideExploreApps', 'fastOnboarding', 'resetLayout']);
+        $input = $this->incomingRequest->only(['tabOrder', 'tabEnabled', 'fieldLayout', 'tabWidgets', 'tabWidgetsActive', 'todoContentWidgets', 'sidebarSectionsPresent', 'sidebarSections', 'projectIntegrationOrder', 'fastOnboarding', 'resetLayout']);
         try {
             $validated = ValidationException::validate($input, [
                 'tabOrder' => ['nullable', 'array'],
@@ -84,13 +85,27 @@ class Settings extends Controller
                 'fieldLayout.groups' => ['nullable', 'array'],
                 'fieldLayout.groups.*' => ['nullable', 'array'],
                 'fieldLayout.groups.*.*' => ['required', 'string', 'max:120'],
+                'tabWidgets' => ['nullable', 'array'],
+                'tabWidgets.*' => ['nullable', 'array'],
+                'tabWidgets.*.*' => ['required', 'string', 'max:120'],
+                'tabWidgetsActive' => ['nullable', 'string', 'max:120'],
+                'todoContentWidgets' => ['nullable', 'array'],
+                'todoContentWidgets.regions' => ['nullable', 'array'],
+                'todoContentWidgets.regions.*' => ['nullable', 'array'],
+                'todoContentWidgets.regions.*.*' => ['nullable', 'array'],
+                'todoContentWidgets.regions.*.*.*' => ['required', 'string', 'max:120'],
+                'todoContentWidgets.parked' => ['nullable', 'array'],
+                'todoContentWidgets.parked.*' => ['required', 'string', 'max:120'],
+                'todoContentWidgets.parkedTargets' => ['nullable', 'array'],
+                'todoContentWidgets.parkedTargets.*' => ['nullable', 'array'],
+                'todoContentWidgets.parkedTargets.*.tab' => ['required_with:todoContentWidgets.parkedTargets.*', 'string', 'max:120'],
+                'todoContentWidgets.parkedTargets.*.region' => ['required_with:todoContentWidgets.parkedTargets.*', 'string', 'max:40', 'regex:/^[a-zA-Z][a-zA-Z0-9_-]{0,39}$/'],
                 'sidebarSectionsPresent' => ['nullable', 'boolean'],
                 'sidebarSections' => ['nullable', 'array'],
                 'sidebarSections.*.label' => ['required', 'string', 'max:80'],
                 'sidebarSections.*.icon' => ['nullable', 'string', 'max:120', 'regex:/^[a-zA-Z0-9 _-]*$/'],
                 'projectIntegrationOrder' => ['sometimes', 'array'],
                 'projectIntegrationOrder.*' => ['required', 'string', 'max:80'],
-                'hideExploreApps' => ['nullable', 'boolean'],
                 'fastOnboarding' => ['nullable', 'boolean'],
                 'resetLayout' => ['nullable', 'boolean'],
             ], [
@@ -139,14 +154,22 @@ class Settings extends Controller
                 'hidden' => $validated['fieldLayout']['parked'] ?? [],
                 'groups' => $validated['fieldLayout']['groups'] ?? [],
             ]);
-            $hideExploreApps = filter_var($validated['hideExploreApps'] ?? false, FILTER_VALIDATE_BOOLEAN);
-            $uiPreferenceSaved = $this->settings->saveSetting('leantimelib.ui.hideExploreApps', $hideExploreApps ? '1' : '0');
+            $tabWidgets = $validated['tabWidgets'] ?? [];
+            if (isset($validated['tabWidgetsActive'])) $tabWidgets['activeTab'] = $validated['tabWidgetsActive'];
+            $tabWidgetsSaved = $this->registry->saveTabWidgets($tabWidgets);
+            $todoContentWidgets = $validated['todoContentWidgets'] ?? [];
+            $todoContentWidgetsSaved = app(\Leantime\Plugins\LeanLib\Services\TodoWidgetRegistry::class)->saveLayout(
+                $todoContentWidgets['regions'] ?? [],
+                $todoContentWidgets['parked'] ?? [],
+                null,
+                $todoContentWidgets['parkedTargets'] ?? []
+            );
             $fastOnboarding = filter_var($validated['fastOnboarding'] ?? false, FILTER_VALIDATE_BOOLEAN);
             $fastOnboardingSaved = $this->settings->saveSetting('leantimelib.ui.fastOnboarding', $fastOnboarding ? '1' : '0');
             $projectIntegrationOrderSaved = ! array_key_exists('projectIntegrationOrder', $validated)
                 || app(\Leantime\Plugins\LeanLib\Services\ProjectIntegrationRegistry::class)
                     ->saveGlobalOrder($validated['projectIntegrationOrder']);
-            $saved = $sidebarSectionsSaved && $tabsSaved && $tabsEnabledSaved && $fieldLayoutSaved && $uiPreferenceSaved && $fastOnboardingSaved && $projectIntegrationOrderSaved;
+            $saved = $sidebarSectionsSaved && $tabsSaved && $tabsEnabledSaved && $fieldLayoutSaved && $tabWidgetsSaved && $todoContentWidgetsSaved && $fastOnboardingSaved && $projectIntegrationOrderSaved;
         } catch (\Throwable $exception) {
             Log::error('Leantime Library could not save the To-do layout order.', [
                 'exception_class' => $exception::class,
@@ -180,10 +203,6 @@ class Settings extends Controller
             $surface['editorHtml'] = $this->guiSurfaces->renderEditor($surface, ['scope' => 'instance']);
         }
         unset($surface);
-        $hideExploreApps = filter_var(
-            $this->settings->getSetting('leantimelib.ui.hideExploreApps', '0'),
-            FILTER_VALIDATE_BOOLEAN
-        );
         $fastOnboarding = $this->settings->getSetting('leantimelib.ui.fastOnboarding', null);
         if ($fastOnboarding === null || $fastOnboarding === false) {
             $fastOnboarding = filter_var($this->settings->getSetting('leantimelib.ui.hideOnboardingSteps', '0'), FILTER_VALIDATE_BOOLEAN)
@@ -205,17 +224,132 @@ class Settings extends Controller
             ->footerAction('Check for updates', BASE_URL.'/LeanLib/plugins/check-for-updates', csrf_token())
             ->insert(
                 SettingsPageBlock::section('General improvements', 'Optional changes to Leantime’s navigation and onboarding.'),
-                SettingsPageBlock::checkbox('hideExploreApps', 'Make My Apps the only Apps page', 'Hide Explore Apps and send the Apps menu directly to My Apps.'),
                 SettingsPageBlock::checkbox('fastOnboarding', 'Fast Onboarding', 'Skip appearance and schedule steps, avoid creating a starter “My Project,” and let users adjust their schedule later in Profile settings.'),
                 SettingsPageBlock::section('GUI customization', 'Arrange native interface parts and plugin contributions through one shared layout. Plugins provide their widgets; the Library controls where they appear and which ones are visible. If the editor looks cramped or squished, press Ctrl + - to zoom out.'),
                 SettingsPageBlock::description('Projects use this layout unless they have a project override.'),
                 SettingsPageBlock::custom(static fn (array $values = [], array $errors = []): string => $guiEditorHtml)
             )
             ->render([
-            'hideExploreApps' => $hideExploreApps,
             'fastOnboarding' => $fastOnboarding,
         ]);
         $this->tpl->assign('settingsContent', $settingsContent);
         $this->tpl->assign('error', $error);
+    }
+
+    #[RequiresPermission(PluginsPermissions::MANAGE, global: true)]
+    public function saveCompanySettingsLayout(): mixed
+    {
+        $sessionToken = session()->token();
+        $requestToken = request()->input('_token', request()->header('X-CSRF-TOKEN'));
+        if (!is_string($sessionToken) || !is_string($requestToken) || !hash_equals($sessionToken, $requestToken)) {
+            return response()->json(['error' => 'The session token is invalid. Refresh the page and try again.'], 419);
+        }
+        $input = request()->all();
+        try {
+            $validated = ValidationException::validate($input, [
+                'tabs' => ['required', 'array', 'min:1', 'max:3'],
+                'tabs.*' => ['required', 'string', 'max:48', 'regex:/^(details|apiKeys|integrations)$/'],
+                'activeTab' => ['required', 'string', 'max:48', 'regex:/^(details|apiKeys|integrations)$/'],
+                'regions' => ['nullable', 'array'],
+                'regions.*' => ['nullable', 'array'],
+                'regions.*.*' => ['nullable', 'array'],
+                'regions.*.*.*' => ['required', 'string', 'max:120'],
+                'parked' => ['nullable', 'array'],
+                'parked.*' => ['required', 'string', 'max:120'],
+                'parkedTargets' => ['nullable', 'array'],
+                'parkedTargets.*' => ['nullable', 'array'],
+                'parkedTargets.*.tab' => ['required_with:parkedTargets.*', 'string', 'max:48', 'regex:/^(details|apiKeys|integrations)$/'],
+                'parkedTargets.*.region' => ['required_with:parkedTargets.*', 'string', 'max:40', 'regex:/^[a-zA-Z][a-zA-Z0-9_-]{0,39}$/'],
+            ]);
+            $tabs = array_values(array_unique(array_intersect($validated['tabs'], ['details', 'apiKeys', 'integrations'])));
+            $activeTab = in_array($validated['activeTab'], $tabs, true) ? $validated['activeTab'] : ($tabs[0] ?? 'details');
+            if ($tabs === []) $tabs = ['details'];
+            $widgetDefinitions = app(\Leantime\Plugins\LeanLib\Services\CompanySettingsEditor::class)->widgetDefinitions();
+            $availableWidgets = array_keys($widgetDefinitions);
+            $parked = array_values(array_unique(array_intersect($validated['parked'] ?? [], $availableWidgets)));
+            $parkedTargets = [];
+            $regions = [];
+            $placedWidgets = [];
+            $allowedRegions = ['content', 'sidebar', 'auxiliary'];
+            foreach ($widgetDefinitions as $definition) $allowedRegions[] = $definition['region'] ?? 'content';
+            $allowedRegions = array_values(array_unique($allowedRegions));
+            foreach ($parked as $widgetId) {
+                $definition = $widgetDefinitions[$widgetId];
+                $target = $validated['parkedTargets'][$widgetId] ?? [];
+                $tab = is_string($target['tab'] ?? null) && in_array($target['tab'], $tabs, true) ? $target['tab'] : ($definition['tab'] ?? $tabs[0]);
+                $region = is_string($target['region'] ?? null) && in_array($target['region'], $allowedRegions, true)
+                    && (($definition['placement'] ?? 'region') === 'any' || $target['region'] === ($definition['region'] ?? 'content'))
+                    ? $target['region'] : ($definition['region'] ?? 'content');
+                $parkedTargets[$widgetId] = ['tab' => $tab, 'region' => $region];
+            }
+            foreach ($tabs as $tab) {
+                foreach ($validated['regions'][$tab] ?? [] as $regionName => $requested) {
+                    if (!is_string($regionName) || !preg_match('/^[a-zA-Z][a-zA-Z0-9_-]{0,39}$/', $regionName) || !is_array($requested)) continue;
+                    if (!in_array($regionName, $allowedRegions, true)) continue;
+                    foreach (array_values(array_unique(array_intersect($requested, $availableWidgets))) as $widgetId) {
+                        if (in_array($widgetId, $parked, true) || in_array($widgetId, $placedWidgets, true)) continue;
+                        $definition = $widgetDefinitions[$widgetId];
+                        if (($definition['placement'] ?? 'region') !== 'any' && ($definition['region'] ?? '') !== $regionName) continue;
+                        if (!isset($regions[$tab][$regionName])) $regions[$tab][$regionName] = [];
+                        $regions[$tab][$regionName][] = $widgetId;
+                        $placedWidgets[] = $widgetId;
+                    }
+                }
+            }
+            foreach ($availableWidgets as $id) {
+                if (in_array($id, $parked, true)) continue;
+                $definition = $widgetDefinitions[$id] ?? [];
+                if (!in_array($id, $placedWidgets, true)) {
+                    $preferredTab = $definition['tab'] ?? 'integrations';
+                    $tab = in_array($preferredTab, $tabs, true) ? $preferredTab : $tabs[0];
+                    $regionName = $definition['region'] ?? 'content';
+                    if (!isset($regions[$tab][$regionName])) $regions[$tab][$regionName] = [];
+                    $regions[$tab][$regionName][] = $id;
+                    $placedWidgets[] = $id;
+                }
+            }
+            $ok = $this->settings->saveSetting('leantimelib.gui.companySettings', json_encode([
+                'tabs' => $tabs, 'activeTab' => $activeTab, 'regions' => $regions, 'parked' => $parked, 'parkedTargets' => $parkedTargets,
+            ], JSON_THROW_ON_ERROR));
+            return response()->json($ok ? ['saved' => true] : ['error' => 'Company settings layout could not be saved.'], $ok ? 200 : 500);
+        } catch (ValidationException $exception) {
+            return response()->json(['error' => 'The company settings layout was invalid.', 'errors' => $exception->getErrorData()], 422);
+        }
+    }
+
+    #[RequiresPermission(PluginsPermissions::MANAGE, global: true)]
+    public function integrations(): mixed
+    {
+        $plugins = app(PluginService::class);
+        $installed = $plugins->getAllPlugins();
+        $discovered = $plugins->discoverNewPlugins();
+        $layout = app(\Leantime\Plugins\LeanLib\Services\CompanySettingsEditor::class)->layout();
+        $content = view()->file(__DIR__.'/../Templates/integrations.blade.php', ['layout' => $layout, 'installedPlugins' => $installed, 'newPlugins' => $discovered])->render();
+        $this->tpl->assign('settingsContent', $content);
+        return $this->tpl->display('leanlib.integrations-page');
+    }
+
+    #[RequiresPermission(PluginsPermissions::MANAGE, global: true)]
+    public function activatePlugin(): mixed
+    {
+        $sessionToken = session()->token();
+        $requestToken = request()->input('_token', request()->header('X-CSRF-TOKEN'));
+        if (!is_string($sessionToken) || !is_string($requestToken) || !hash_equals($sessionToken, $requestToken)) {
+            abort(419, 'The session token is invalid. Refresh the page and try again.');
+        }
+        $id = request()->input('plugin');
+        if (!is_string($id) || !preg_match('/^[a-zA-Z0-9_-]{1,80}$/', $id)) {
+            abort(422, 'The plugin identifier is invalid.');
+        }
+        $plugins = app(PluginService::class);
+        $discoveredIds = array_map(static fn ($plugin) => is_object($plugin) ? ($plugin->foldername ?? null) : null, $plugins->discoverNewPlugins());
+        if (!in_array($id, $discoveredIds, true)) abort(404, 'The plugin is not available to install.');
+        $result = $plugins->performPluginAction('install', $id);
+        if (is_array($result) && isset($result[1]) && $result[1] === 'error') {
+            $this->tpl->setNotification((string) ($result[0] ?? 'The plugin could not be activated.'), 'error');
+        } else {
+            $this->tpl->setNotification((string) ($result[0] ?? 'Plugin activated.'), 'success');
+        }
+        return Frontcontroller::redirect(BASE_URL.'/LeanLib/integrations');
     }
 }

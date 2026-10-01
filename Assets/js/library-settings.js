@@ -15,6 +15,7 @@
         let saving = false;
         let saveAgain = false;
         let draggedChanged = false;
+        let draggedTodoContentWidget = null;
 
         const iconChoices = [
             'fas fa-folder-open', 'fas fa-calendar-days', 'fas fa-code-branch', 'fas fa-gear',
@@ -211,6 +212,44 @@
                 const zone = item.closest('[data-library-zone]');
                 if (zone) place(item, zone);
             });
+            const detailPanel = workspace.querySelector('[data-todo-preview-panel="ticketdetails"]');
+            const detailIds = detailPanel ? Array.from(detailPanel.querySelectorAll('[data-library-zone="main"] > [data-widget-kind], [data-library-zone="sidebar"] > [data-widget-kind], [data-library-zone="auxiliary"] > [data-widget-kind]')).map((item) => item.dataset.widgetId) : [];
+            const inputs = Array.from(workspace.querySelectorAll('[data-todo-tab-widget-input="ticketdetails"]'));
+            inputs.forEach((input, index) => { input.disabled = index >= detailIds.length; if (!input.disabled) input.value = detailIds[index]; });
+            syncTodoContentWidgetInputs();
+        }
+
+        function syncTodoContentWidgetInputs() {
+            const inputRoot = workspace.querySelector('[data-todo-content-widget-inputs]');
+            if (!inputRoot) return;
+            inputRoot.replaceChildren();
+            workspace.querySelectorAll('[data-todo-generic-region]').forEach((region) => {
+                const key = region.dataset.todoGenericRegion;
+                if (key === 'parked') return;
+                const [tabId, regionId] = key.split(':');
+                region.querySelectorAll(':scope > [data-todo-content-widget]').forEach((item) => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'todoContentWidgets[regions][' + tabId + '][' + regionId + '][]';
+                    input.value = item.dataset.todoContentWidget;
+                    inputRoot.appendChild(input);
+                });
+            });
+            const parked = workspace.querySelector('[data-todo-generic-region="parked"]');
+            if (parked) parked.querySelectorAll(':scope > [data-todo-content-widget]').forEach((item) => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'todoContentWidgets[parked][]';
+                input.value = item.dataset.todoContentWidget;
+                inputRoot.appendChild(input);
+                [['tab', item.dataset.returnTab || item.dataset.defaultTab || 'ticketdetails'], ['region', item.dataset.returnRegion || item.dataset.defaultRegion || 'content']].forEach(([key, value]) => {
+                    const targetInput = document.createElement('input');
+                    targetInput.type = 'hidden';
+                    targetInput.name = 'todoContentWidgets[parkedTargets][' + item.dataset.todoContentWidget + '][' + key + ']';
+                    targetInput.value = value;
+                    inputRoot.appendChild(targetInput);
+                });
+            });
         }
 
         async function saveSettings() {
@@ -384,6 +423,14 @@
                 event.preventDefault();
                 return;
             }
+            const contentWidget = event.target.closest('[data-todo-content-widget]');
+            if (contentWidget && workspace.contains(contentWidget)) {
+                draggedTodoContentWidget = contentWidget;
+                contentWidget.classList.add('is-dragging');
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', contentWidget.dataset.todoContentWidget);
+                return;
+            }
             const item = event.target.closest('[data-widget-kind]');
             if (!item || !workspace.contains(item)) return;
             dragged = item;
@@ -393,12 +440,39 @@
             event.dataTransfer.setData('text/plain', item.dataset.widgetId);
         });
         workspace.addEventListener('dragend', function () {
+            if (draggedTodoContentWidget) {
+                draggedTodoContentWidget.classList.remove('is-dragging');
+                draggedTodoContentWidget = null;
+                scheduleSave();
+                return;
+            }
             if (dragged) dragged.classList.remove('is-dragging');
             dragged = null;
             if (draggedChanged) scheduleSave();
             draggedChanged = false;
         });
         workspace.addEventListener('dragover', function (event) {
+            const contentRegion = event.target.closest('[data-todo-generic-region]');
+            if (draggedTodoContentWidget && contentRegion) {
+                const key = contentRegion.dataset.todoGenericRegion;
+                const [tabId, regionId] = key.split(':');
+                if (tabId !== 'parked' && draggedTodoContentWidget.dataset.placement !== 'any' && regionId !== draggedTodoContentWidget.dataset.defaultRegion) return;
+                event.preventDefault();
+                const targetWidget = event.target.closest('[data-todo-content-widget]');
+                if (!targetWidget || targetWidget === draggedTodoContentWidget || targetWidget.parentElement !== contentRegion) contentRegion.appendChild(draggedTodoContentWidget);
+                else {
+                    const bounds = targetWidget.getBoundingClientRect();
+                    contentRegion.insertBefore(draggedTodoContentWidget, event.clientY > bounds.top + bounds.height / 2 ? targetWidget.nextSibling : targetWidget);
+                }
+                draggedTodoContentWidget.dataset.widgetTab = tabId;
+                if (tabId !== 'parked') {
+                    draggedTodoContentWidget.dataset.returnTab = tabId;
+                    draggedTodoContentWidget.dataset.returnRegion = regionId;
+                }
+                const parkButton = draggedTodoContentWidget.querySelector('[data-todo-content-park]');
+                if (parkButton) parkButton.textContent = tabId === 'parked' ? '+' : '×';
+                return;
+            }
             const zone = event.target.closest('[data-library-zone]');
             if (!dragged || !zone) return;
             const kind = dragged.dataset.widgetKind;
@@ -448,6 +522,37 @@
         });
         workspace.addEventListener('drop', function (event) { if (event.target.closest('[data-library-zone]')) event.preventDefault(); });
         workspace.addEventListener('click', function (event) {
+            const contentParkButton = event.target.closest('[data-todo-content-park]');
+            if (contentParkButton) {
+                const item = contentParkButton.closest('[data-todo-content-widget]');
+                const currentRegion = item && item.parentElement.dataset.todoGenericRegion;
+                if (!item || !currentRegion) return;
+                if (currentRegion === 'parked') {
+                    const tabId = item.dataset.returnTab || item.dataset.defaultTab || 'ticketdetails';
+                    const regionId = item.dataset.returnRegion || item.dataset.defaultRegion || 'content';
+                    const destination = workspace.querySelector('[data-todo-generic-region="' + CSS.escape(tabId + ':' + regionId) + '"]');
+                    if (destination) destination.appendChild(item);
+                    item.dataset.widgetTab = tabId;
+                    contentParkButton.textContent = '×';
+                } else {
+                    const [tabId, regionId] = currentRegion.split(':');
+                    item.dataset.returnTab = tabId;
+                    item.dataset.returnRegion = regionId;
+                    workspace.querySelector('[data-todo-generic-region="parked"]')?.appendChild(item);
+                    item.dataset.widgetTab = 'parked';
+                    contentParkButton.textContent = '+';
+                }
+                scheduleSave();
+                return;
+            }
+            const tabItem = event.target.closest('[data-widget-kind="tabs"]');
+            if (tabItem && workspace.contains(tabItem)) {
+                const panelId = tabItem.dataset.widgetId;
+                workspace.querySelectorAll('[data-todo-preview-panel]').forEach((panel) => { panel.hidden = panel.dataset.todoPreviewPanel !== panelId; });
+                const activeInput = workspace.querySelector('[data-todo-active-tab]');
+                if (activeInput) activeInput.value = panelId;
+                scheduleSave();
+            }
             const resetButton = event.target.closest('[data-layout-reset-preview]');
             if (resetButton) { resetLayout(resetButton); return; }
             const addSectionButton = event.target.closest('[data-sidebar-section-add]');
@@ -502,6 +607,11 @@
             if (!item) return;
             const defaultZone = item.dataset.defaultZone || (item.dataset.widgetKind === 'tabs' ? 'tabs' : 'sidebar');
             const name = button.hasAttribute('data-widget-add') ? defaultZone : 'parked';
+            if (item.dataset.widgetKind === 'tabs' && name !== 'parked') {
+                const panel = workspace.querySelector('[data-todo-preview-panel="' + CSS.escape(item.dataset.widgetId) + '"]');
+                const target = workspace.querySelector('.lt-library-ticket__preview-tabs');
+                if (panel && target) target.appendChild(panel);
+            }
             if (item.dataset.widgetKind === 'tabs' && name === 'parked'
                 && workspace.querySelectorAll('[data-library-zone="tabs"] > [data-widget-kind="tabs"]').length <= 1) {
                 setStatus('Keep at least one To-do tab visible.', 'error');
@@ -754,6 +864,122 @@
         showSelected();
     }
 
+    function installCompanyEditor(editor) {
+        if (editor.dataset.installed === '1') return;
+        editor.dataset.installed = '1';
+        const tabsRoot = editor.querySelector('[data-company-editor-tabs]');
+        const status = editor.querySelector('[data-company-editor-status]');
+        let layout = {};
+        try { layout = JSON.parse(tabsRoot.dataset.layout || '{}'); } catch (error) { layout = {}; }
+        let dragged = null;
+        const renderTab = function (tabId) {
+            layout.activeTab = tabId;
+            const activeInput = editor.querySelector('input[name="activeTab"]');
+            if (activeInput) activeInput.value = tabId;
+            editor.querySelectorAll('[data-company-editor-tab]').forEach((button) => {
+                const active = button.dataset.companyEditorTab === tabId;
+                button.classList.toggle('is-active', active);
+                button.setAttribute('aria-pressed', String(active));
+            });
+            editor.querySelectorAll('[data-company-editor-panel]').forEach((panel) => { panel.hidden = panel.dataset.companyEditorPanel !== tabId; });
+        };
+        if (!editor.querySelector('input[name="activeTab"]')) {
+            const activeInput = document.createElement('input');
+            activeInput.type = 'hidden';
+            activeInput.name = 'activeTab';
+            editor.appendChild(activeInput);
+        }
+        const sync = function () {
+            layout.tabs = Array.from(editor.querySelectorAll('[data-company-editor-tab]')).map((button) => button.dataset.companyEditorTab);
+            layout.regions = {};
+            layout.parked = [];
+            layout.parkedTargets = {};
+            editor.querySelectorAll('[data-company-region]').forEach((region) => {
+                const key = region.dataset.companyRegion;
+                const ids = Array.from(region.querySelectorAll(':scope > [data-company-widget]')).map((item) => item.dataset.companyWidget);
+                if (key === 'parked') layout.parked = ids;
+                else {
+                    const split = key.split(':');
+                    layout.regions[split[0]] = layout.regions[split[0]] || {};
+                    layout.regions[split[0]][split[1]] = ids;
+                }
+            });
+            editor.querySelectorAll('[data-company-region="parked"] > [data-company-widget]').forEach((item) => {
+                layout.parkedTargets[item.dataset.companyWidget] = {
+                    tab: item.dataset.returnTab || item.dataset.defaultTab || 'integrations',
+                    region: item.dataset.returnRegion || item.dataset.defaultRegion || 'content'
+                };
+            });
+            const metadata = new FormData();
+            const csrf = editor.querySelector('input[name="_token"]');
+            if (csrf) metadata.append('_token', csrf.value);
+            layout.tabs.forEach((id) => metadata.append('tabs[]', id));
+            metadata.append('activeTab', layout.activeTab);
+            Object.keys(layout.regions).forEach((tab) => Object.keys(layout.regions[tab] || {}).forEach((region) => (layout.regions[tab][region] || []).forEach((id) => metadata.append('regions[' + tab + '][' + region + '][]', id))));
+            layout.parked.forEach((id) => metadata.append('parked[]', id));
+            Object.keys(layout.parkedTargets).forEach((id) => {
+                metadata.append('parkedTargets[' + id + '][tab]', layout.parkedTargets[id].tab);
+                metadata.append('parkedTargets[' + id + '][region]', layout.parkedTargets[id].region);
+            });
+            return metadata;
+        };
+        editor.addEventListener('click', function (event) {
+            const tabButton = event.target.closest('[data-company-editor-tab]');
+            if (tabButton) { renderTab(tabButton.dataset.companyEditorTab); return; }
+            const parkButton = event.target.closest('[data-company-park-widget]');
+            if (parkButton) {
+                const item = parkButton.closest('[data-company-widget]');
+                const current = item.parentElement.dataset.companyRegion;
+                if (current === 'parked') {
+                    const tabId = item.dataset.returnTab && layout.tabs.includes(item.dataset.returnTab) ? item.dataset.returnTab : (item.dataset.defaultTab || layout.activeTab);
+                    const regionName = item.dataset.returnRegion || (item.dataset.placement === 'any' ? 'content' : item.dataset.defaultRegion);
+                    const destination = editor.querySelector('[data-company-region="' + CSS.escape(tabId + ':' + regionName) + '"]');
+                    if (destination) destination.appendChild(item);
+                    item.dataset.widgetTab = tabId;
+                    parkButton.textContent = '×';
+                } else {
+                    const [tabId, regionName] = current.split(':');
+                    item.dataset.returnTab = tabId;
+                    item.dataset.returnRegion = regionName;
+                    editor.querySelector('[data-company-region="parked"]').appendChild(item);
+                    item.dataset.widgetTab = 'parked';
+                    parkButton.textContent = '+';
+                }
+                return;
+            }
+            if (event.target.closest('[data-company-editor-save]')) {
+                const button = event.target.closest('[data-company-editor-save]'); button.disabled = true;
+                fetch(editor.dataset.layoutEndpoint, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': editor.dataset.csrf }, body: sync() })
+                    .then(async (response) => { const result = await response.json().catch(() => ({})); if (!response.ok || result.saved !== true) throw new Error(result.error || 'The layout could not be saved.'); status.textContent = 'Layout saved.'; })
+                    .catch((error) => { status.textContent = error.message; }).finally(() => { button.disabled = false; });
+            }
+        });
+        editor.addEventListener('dragstart', function (event) {
+            const item = event.target.closest('[data-company-widget]'); if (!item) return;
+            dragged = item; event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', item.dataset.companyWidget);
+        });
+        editor.addEventListener('dragover', function (event) {
+            const region = event.target.closest('[data-company-region]'); if (!dragged || !region) return;
+            const [tabId, regionName] = region.dataset.companyRegion.split(':');
+            const required = dragged.dataset.defaultRegion;
+            if (regionName && dragged.dataset.placement !== 'any' && regionName !== required) return;
+            event.preventDefault();
+            const target = event.target.closest('[data-company-widget]');
+            if (!target || target === dragged) region.appendChild(dragged);
+            else { const bounds = target.getBoundingClientRect(); region.insertBefore(dragged, event.clientY > bounds.top + bounds.height / 2 ? target.nextSibling : target); }
+            dragged.dataset.widgetTab = tabId || 'parked';
+            if (regionName && tabId !== 'parked') {
+                dragged.dataset.returnTab = tabId;
+                dragged.dataset.returnRegion = regionName;
+            }
+            const control = dragged.querySelector('[data-company-park-widget]');
+            if (control) control.textContent = tabId === 'parked' ? '+' : '×';
+        });
+        editor.addEventListener('drop', (event) => { if (event.target.closest('[data-company-region]')) event.preventDefault(); });
+        editor.addEventListener('dragend', () => { dragged = null; });
+        renderTab(layout.activeTab || 'details');
+    }
+
     function installIntegrationOrderEditor(root) {
         const editors = [];
         if (root.matches && root.matches('[data-integration-order-editor]')) editors.push(root);
@@ -796,7 +1022,9 @@
             root.querySelectorAll('[data-library-workspace]').forEach(installWorkspace);
             root.querySelectorAll('[data-library-layout-editor]').forEach(installLayoutEditor);
             root.querySelectorAll('[data-field-editor]').forEach(installFieldEditor);
+            root.querySelectorAll('[data-company-editor]').forEach(installCompanyEditor);
         }
+        if (root.matches && root.matches('[data-company-editor]')) installCompanyEditor(root);
         installIntegrationOrderEditor(root);
     }
 

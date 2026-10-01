@@ -1,0 +1,43 @@
+.lt-library-company-editor__tabs,
+.lt-library-company-editor__stage,
+.lt-library-company-editor__parked {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: .65rem;
+    margin: 1rem 0;
+}
+
+.lt-library-company-editor__tabs button,
+.lt-library-company-widget {
+    border: 1px solid var(--box-border-color, #d9d9d9);
+    border-radius: .45rem;
+    background: var(--box-background, #fff);
+    padding: .55rem .8rem;
+}
+
+.lt-library-company-editor__tabs .is-active {
+    border-color: var(--primary-color, #1686b0);
+    box-shadow: 0 0 0 1px var(--primary-color, #1686b0);
+}
+
+.lt-library-company-editor__stage { display: block; }
+.lt-library-company-editor__stage > section { padding: .8rem; border: 1px solid var(--box-border-color, #d9d9d9); border-radius: .6rem; }
+.lt-library-company-editor__stage > section[hidden] { display: none !important; }
+.lt-library-company-editor__stage ol,
+.lt-library-company-editor__parked ol { min-height: 3rem; list-style: none; margin: .5rem 0; padding: .5rem; border: 1px dashed var(--box-border-color, #d9d9d9); border-radius: .4rem; }
+.lt-library-company-widget { display: flex; align-items: center; gap: .6rem; margin: .35rem 0; cursor: grab; }
+.lt-library-company-widget button { margin-left: auto; }
+.lt-library-company-editor__parked { display: block; padding: .75rem; background: var(--secondary-background-color, #f4f5f6); border-radius: .6rem; }
+.lt-library-company-editor__parked small { display: block; color: var(--secondary-text-color, #777); }
+.lt-library-integrations-tabs { display: flex; gap: 1rem; margin: 1rem 0; }
+.lt-library-integrations-content h2 { margin-top: 1.5rem; }
+.lt-library-app-grid { display: flex; flex-wrap: wrap; }
+
+.lt-library-ticket__preview-tabs > section[hidden] { display: none !important; }
+.lt-library-preview-native { margin: .75rem 0; padding: 1.5rem; border: 1px dashed var(--box-border-color, #d9d9d9); border-radius: .5rem; color: var(--secondary-text-color, #777); }
+
+@media (max-width: 700px) {
+    .lt-library-company-editor__tabs { align-items: stretch; flex-direction: column; }
+    .lt-library-company-editor__tabs button { width: 100%; text-align: left; }
+}
