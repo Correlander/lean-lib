@@ -45,6 +45,21 @@
     if (is_object($authors)) $authors = (array) $authors;
     if (!is_array($authors)) $authors = [];
 
+    $metadataRenderer = app(\Leantime\Plugins\LeanLib\Services\PluginMetadataRenderer::class);
+    $pluginMetadata = [
+        'pluginFolder' => is_string($selectedPlugin->foldername ?? null) ? $selectedPlugin->foldername : null,
+        'version' => is_string($selectedPlugin->version ?? null) ? $selectedPlugin->version : null,
+        'authors' => $authors,
+        'homepage' => is_string($selectedPlugin->homepage ?? null) ? $selectedPlugin->homepage : null,
+        'license' => $selectedPlugin->license ?? null,
+    ];
+    if (is_string($selectedPlugin->foldername ?? null)) {
+        foreach ($metadataRenderer->fromPluginFolder($selectedPlugin->foldername) as $key => $value) {
+            if ($value !== null && $value !== []) $pluginMetadata[$key] = $value;
+        }
+    }
+    $pluginMetadataHtml = $metadataRenderer->render($pluginMetadata);
+
     $pluginManagerContent = null;
     if ($selectedEntry !== null && $selectedEntry['state'] === 'installed'
         && !empty($selectedPlugin->enabled)
@@ -112,7 +127,6 @@
                 @php
                     $plugin = $selectedEntry['plugin'];
                     $description = is_string($plugin->description ?? null) ? trim($plugin->description) : '';
-                    $homepage = is_string($plugin->homepage ?? null) && filter_var($plugin->homepage, FILTER_VALIDATE_URL) && in_array(strtolower((string) parse_url($plugin->homepage, PHP_URL_SCHEME)), ['http', 'https'], true) ? $plugin->homepage : null;
                     $pluginId = isset($plugin->id) ? (string) $plugin->id : '';
                     $metadataCheck = $selectedEntry['state'] === 'invalid'
                         ? ['valid' => false, 'errors' => is_array($plugin->preflightErrors ?? null) ? $plugin->preflightErrors : []]
@@ -131,22 +145,7 @@
 
                 @if ($description !== '') <p class="lt-library-manager__description">{{ $description }}</p> @endif
 
-                <dl class="lt-library-manager__metadata">
-                    @if (!empty($plugin->version))
-                        <div><dt>Version</dt><dd>{{ $plugin->version }}</dd></div>
-                    @endif
-                    <div><dt>Plugin folder</dt><dd><code>{{ $plugin->foldername }}</code></dd></div>
-                    @foreach ($authors as $author)
-                        @php
-                            $author = is_object($author) ? (array) $author : $author;
-                            $authorName = is_array($author) && is_string($author['name'] ?? null) ? trim($author['name']) : '';
-                        @endphp
-                        @if ($authorName !== '')
-                            <div><dt>{{ $loop->first ? 'Author' : 'Also' }}</dt><dd>{{ $authorName }}@if (is_string($author['email'] ?? null) && filter_var($author['email'], FILTER_VALIDATE_EMAIL)) <a href="mailto:{{ $author['email'] }}">{{ $author['email'] }}</a>@endif</dd></div>
-                        @endif
-                    @endforeach
-                    @if ($homepage) <div><dt>Website</dt><dd><a href="{{ $homepage }}" target="_blank" rel="noopener noreferrer">{{ $homepage }}</a></dd></div> @endif
-                </dl>
+                <div class="lt-library-manager__metadata">{!! $pluginMetadataHtml !!}</div>
 
                 @if ($selectedEntry['state'] === 'invalid' || ($selectedEntry['state'] === 'installed' && !$metadataCheck['valid']))
                     <div class="alert alert-warning lt-library-manager__preflight" role="status">

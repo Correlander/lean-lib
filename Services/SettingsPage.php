@@ -44,6 +44,19 @@ final class SettingsPage
         return $this;
     }
 
+    /** Override Composer values with header metadata only; presentation stays Library-owned. */
+    public function metadata(array $metadata): self
+    {
+        $allowed = ['title', 'description', 'version', 'authors', 'license', 'homepage', 'sourceUrl', 'supportUrl', 'contributionsUrl'];
+        foreach ($metadata as $key => $_value) {
+            if (! is_string($key) || ! in_array($key, $allowed, true)) {
+                throw new \InvalidArgumentException('Settings page metadata contains an unsupported field.');
+            }
+        }
+        $this->definition['metadata'] = array_replace($this->definition['metadata'] ?? [], $metadata);
+        return $this;
+    }
+
     public function supportUrl(string $url): self
     {
         $this->definition['supportUrl'] = $url;

@@ -17,24 +17,29 @@ class SettingsPageRenderer
      * number, select, secret, action, and custom. Custom content is executable provider
      * code and must never contain user-authored templates or untrusted HTML.
      *
-     * @param array{title?:string,description?:string,supportUrl?:string,contributionsUrl?:string,footer?:array{autosave:bool,submitLabel:string},footerAction?:array,blocks?:array} $definition
+     * @param array{title?:string,description?:string,metadata?:array,footer?:array{autosave:bool,submitLabel:string},footerAction?:array,blocks?:array} $definition
      * @param array<string,mixed> $values Current provider-owned values. Secrets should be booleans such as `apiKeyConfigured`.
      * @param array<string,string|array> $errors Provider-generated validation errors, keyed by field ID.
      */
     public function render(array $definition, array $values = [], array $errors = []): string
     {
-        $normalized = $this->normalize($definition);
-        if (is_string($definition['pluginFolder'] ?? null)) {
-            $metadata = array_filter($this->readPluginMetadata($definition['pluginFolder']), static fn ($value): bool => $value !== null);
-            foreach ($metadata as $key => $value) {
-                if (! array_key_exists($key, $definition)) {
-                    $normalized[$key] = $value;
-                }
-            }
+        $presenter = app(PluginMetadataRenderer::class);
+        $metadataOverrides = $definition['metadata'] ?? [];
+        if (! is_array($metadataOverrides)) {
+            throw new \InvalidArgumentException('Settings page metadata must be an array.');
         }
+        unset($definition['metadata']);
+
+        $composerMetadata = is_string($definition['pluginFolder'] ?? null)
+            ? $presenter->fromPluginFolder($definition['pluginFolder']) : [];
+        $definition = array_replace($composerMetadata, $metadataOverrides, $definition);
+
+        $normalized = $this->normalize($definition);
+        $metadataHtml = $presenter->render($normalized + ['pluginFolder' => $definition['pluginFolder'] ?? null]);
 
         return view()->file(__DIR__.'/../Templates/shared-settings-page.blade.php', [
             'definition' => $normalized,
+            'pluginMetadataHtml' => $metadataHtml,
             'values' => $values,
             'errors' => $errors,
         ])->render();
@@ -131,68 +136,11 @@ class SettingsPageRenderer
             'headerCopyClass' => is_string($definition['headerCopyClass'] ?? null) ? trim($definition['headerCopyClass']) : '',
             'sectionClass' => is_string($definition['sectionClass'] ?? null) ? trim($definition['sectionClass']) : '',
             'version' => is_string($definition['version'] ?? null) ? trim($definition['version']) : '',
-            'author' => is_string($definition['author'] ?? null) ? trim($definition['author']) : '',
             'authors' => is_array($definition['authors'] ?? null) ? $definition['authors'] : [],
-            'emails' => is_array($definition['emails'] ?? null) ? $definition['emails'] : [],
             'license' => is_string($definition['license'] ?? null) ? trim($definition['license']) : '',
             'sourceUrl' => $sourceUrl,
             'homepage' => is_string($definition['homepage'] ?? null) && $this->isWebUrl($definition['homepage']) ? $definition['homepage'] : '',
             'blocks' => $normalizedBlocks,
-        ];
-    }
-
-    /** Read identity fields from the provider's installed Composer metadata. */
-    private function readPluginMetadata(string $pluginFolder): array
-    {
-        if ($pluginFolder === '' || basename($pluginFolder) !== $pluginFolder) return [];
-        $pluginRoot = realpath(ROOT.'/../app/Plugins');
-        if ($pluginRoot === false || ! is_dir($pluginRoot)) return [];
-        $path = realpath($pluginRoot.DIRECTORY_SEPARATOR.$pluginFolder.DIRECTORY_SEPARATOR.'composer.json');
-        if ($path === false || ! str_starts_with($path, $pluginRoot.DIRECTORY_SEPARATOR)) return [];
-
-        $metadata = json_decode((string) @file_get_contents($path), true);
-        if (! is_array($metadata)) return [];
-        $authors = array_values(array_filter($metadata['authors'] ?? [], static fn ($author): bool =>
-            is_array($author) && is_string($author['name'] ?? null) && trim($author['name']) !== ''
-        ));
-        $authorNames = array_map(static fn (array $author): string => trim($author['name']), $authors);
-        $authorDetails = array_map(function (array $author): array {
-            $profile = $author['homepage'] ?? null;
-            return [
-                'name' => trim($author['name']),
-                'email' => is_string($author['email'] ?? null) && trim($author['email']) !== '' ? trim($author['email']) : null,
-                'homepage' => is_string($profile) && $this->isWebUrl($profile) ? $profile : null,
-            ];
-        }, $authors);
-
-        $support = is_array($metadata['support'] ?? null) ? $metadata['support'] : [];
-        $supportUrl = $support['issues'] ?? $support['source'] ?? $support['docs'] ?? null;
-        $funding = is_array($metadata['funding'] ?? null) ? $metadata['funding'] : [];
-        $contributionsUrl = null;
-        foreach ($funding as $fundingLink) {
-            if (is_array($fundingLink) && is_string($fundingLink['url'] ?? null) && $this->isWebUrl($fundingLink['url'])) {
-                $contributionsUrl = $fundingLink['url'];
-                break;
-            }
-        }
-        $sourceUrl = $support['source'] ?? null;
-        $license = $metadata['license'] ?? null;
-        if (is_array($license)) {
-            $license = implode(', ', array_filter($license, 'is_string'));
-        }
-
-        return [
-            'title' => is_string($metadata['name'] ?? null) && trim($metadata['name']) !== '' ? trim($metadata['name']) : null,
-            'description' => is_string($metadata['description'] ?? null) && trim($metadata['description']) !== '' ? trim($metadata['description']) : null,
-            'version' => is_string($metadata['version'] ?? null) && trim($metadata['version']) !== '' ? trim($metadata['version']) : null,
-            'author' => $authorNames === [] ? null : implode(', ', $authorNames),
-            'authors' => $authorDetails === [] ? null : $authorDetails,
-            'emails' => array_values(array_filter(array_column($authorDetails, 'email'))),
-            'license' => is_string($license) && trim($license) !== '' ? trim($license) : null,
-            'sourceUrl' => is_string($sourceUrl) && $this->isWebUrl($sourceUrl) ? $sourceUrl : null,
-            'homepage' => is_string($metadata['homepage'] ?? null) && $this->isWebUrl($metadata['homepage']) ? $metadata['homepage'] : null,
-            'supportUrl' => is_string($supportUrl) && $this->isWebUrl($supportUrl) ? $supportUrl : null,
-            'contributionsUrl' => $contributionsUrl,
         ];
     }
 

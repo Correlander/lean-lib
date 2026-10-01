@@ -179,26 +179,7 @@
     color: var(--library-muted);
 }
 .lt-library-manager__metadata {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: .8rem 1rem;
-    margin: 1.2rem 0;
-}
-.lt-library-manager__metadata div {
-    min-width: 0;
-}
-.lt-library-manager__metadata dt {
-    margin-bottom: .15rem;
-    color: var(--library-muted);
-    font-size: .78rem;
-    font-weight: 600;
-}
-.lt-library-manager__metadata dd {
-    margin: 0;
-    overflow-wrap: anywhere;
-}
-.lt-library-manager__metadata dd a {
-    display: block;
+    margin: 1rem 0 1.25rem;
 }
 .lt-library-manager__settings {
     padding-top: 1rem;

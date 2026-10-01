@@ -5,60 +5,7 @@
             <p>{{ $definition['description'] !== '' ? $definition['description'] : 'Description not specified' }}</p>
         </div>
         <aside class="leantimelib-shared-settings__identity">
-            <div class="leantimelib-shared-settings__actions">
-                @if ($definition['supportUrl'])
-                    <a class="leantimelib-shared-settings__support" href="{{ $definition['supportUrl'] }}" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-circle-question" aria-hidden="true"></i><span>Support</span></a>
-                @else
-                    <span class="leantimelib-shared-settings__support leantimelib-shared-settings__placeholder" aria-disabled="true"><i class="fa-solid fa-circle-question" aria-hidden="true"></i><span>No Support Link Defined</span></span>
-                @endif
-                @if ($definition['contributionsUrl'])
-                    <a class="leantimelib-shared-settings__contributions" href="{{ $definition['contributionsUrl'] }}" target="_blank" rel="noopener noreferrer" aria-label="Contributions and donations for {{ $definition['title'] }}" title="Contributions"><i class="fa-brands fa-github" aria-hidden="true"></i></a>
-                @else
-                    <span class="leantimelib-shared-settings__contributions leantimelib-shared-settings__contributions--missing leantimelib-shared-settings__placeholder">No Contributions Link Defined</span>
-                @endif
-            </div>
-            <hr>
-            <div class="leantimelib-shared-settings__metadata">
-                <div class="leantimelib-shared-settings__metadata-primary">
-                    <div class="leantimelib-shared-settings__authors">
-                        @if ($definition['authors'] !== [])
-                            <span>By
-                                @foreach ($definition['authors'] as $index => $author)
-                                    @if ($index > 0), @endif
-                                    @if ($author['homepage'])<a href="{{ $author['homepage'] }}" target="_blank" rel="noopener noreferrer">{{ $author['name'] }}</a>@else{{ $author['name'] }}@endif
-                                @endforeach
-                            </span>
-                        @else
-                            <span>Author not specified</span>
-                        @endif
-                    </div>
-                    <div class="leantimelib-shared-settings__emails">
-                        @if ($definition['emails'] !== [])
-                            <span>{{ count($definition['emails']) > 1 ? 'Emails: ' : 'Email: ' }}</span>
-                            @foreach ($definition['emails'] as $index => $email)
-                                @if ($index > 0), @endif<a href="mailto:{{ $email }}">{{ $email }}</a>
-                            @endforeach
-                        @else
-                            <span>No author email defined</span>
-                        @endif
-                    </div>
-                </div>
-                <div class="leantimelib-shared-settings__metadata-secondary">
-                    @if ($definition['version'] !== '')
-                        @if ($definition['sourceUrl'])
-                            <a href="{{ $definition['sourceUrl'] }}" target="_blank" rel="noopener noreferrer">Version {{ $definition['version'] }}</a>
-                        @else
-                            <span>Version {{ $definition['version'] }}</span>
-                        @endif
-                    @else
-                        <span>Version not specified</span>
-                    @endif
-                    <span>{{ $definition['license'] !== '' ? 'License: '.$definition['license'] : 'License not specified' }}</span>
-                    @if (! $definition['sourceUrl'])
-                        <span class="leantimelib-shared-settings__placeholder">No source link defined</span>
-                    @endif
-                </div>
-            </div>
+            {!! $pluginMetadataHtml !!}
         </aside>
     </header>
 
