@@ -95,7 +95,7 @@ class CompanySettingsEditor
         }
         $html .= '<li data-leantimelib-company-tab="integrations"><a href="#integrations"><span class="fa fa-plug"></span> Integrations</a></li>';
         $payload = json_encode(['tabs' => $layout['tabs'], 'widgets' => $layout['regions']], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR);
-        $html .= '<li hidden data-leantimelib-company-layout="'.htmlspecialchars($payload, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'"></li>';
+        $html .= '<li hidden data-leantimelib-company-layout="'.htmlspecialchars($payload, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'" data-integrations-endpoint="'.$this->e(rtrim(BASE_URL, '/').'/LeanLib/integrations').'"></li>';
         echo $html;
     }
 
