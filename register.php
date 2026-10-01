@@ -8,6 +8,7 @@ use Leantime\Plugins\LeanLib\Services\TodoSectionRegistry;
 use Leantime\Plugins\LeanLib\Services\TodoTabRegistry;
 use Leantime\Plugins\LeanLib\Services\UserSchedulePanel;
 use Leantime\Plugins\LeanLib\Services\CompanySettingsEditor;
+use Leantime\Plugins\LeanLib\Services\PluginManagerRegistry;
 use Leantime\Plugins\LeanLib\Services\TodoWidgetRegistry;
 
 $registration = app()->makeWith(Registration::class, ['pluginId' => 'LeanLib']);
@@ -67,6 +68,19 @@ EventDispatcher::add_event_listener(
 
 EventDispatcher::add_event_listener('leantime.domain.setting.templates.editCompanySettings.tabs', [CompanySettingsEditor::class, 'renderTabHeader']);
 EventDispatcher::add_event_listener('leantime.domain.setting.templates.editCompanySettings.tabsContent', [CompanySettingsEditor::class, 'renderTabContent']);
+EventDispatcher::add_filter_listener(
+    PluginManagerRegistry::FILTER,
+    static function (array $entries, array $context): array {
+        if (($context['pluginId'] ?? null) !== 'LeanLib') return $entries;
+
+        $entries[] = [
+            'apiVersion' => PluginManagerRegistry::API_VERSION,
+            'pluginId' => 'LeanLib',
+            'render' => static fn (array $context): string => '<p>Manage shared GUI layouts, Library preferences, and integration contributions from the settings page below.</p>',
+        ];
+        return $entries;
+    }
+);
 EventDispatcher::add_event_listener('leantime.domain.users.templates.editOwn.tabs', [AccountIntegrationRegistry::class, 'renderTabHeader']);
 EventDispatcher::add_event_listener('leantime.domain.users.templates.editOwn.tabsContent', [AccountIntegrationRegistry::class, 'renderTabContent']);
 
