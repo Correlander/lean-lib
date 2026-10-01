@@ -18,7 +18,9 @@
 
 .lt-library-company-editor__tabs .is-active {
     border-color: var(--primary-color, #1686b0);
-    box-shadow: 0 0 0 1px var(--primary-color, #1686b0);
+    background: var(--primary-color, #1686b0);
+    color: #fff;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-color, #1686b0) 28%, transparent);
 }
 
 .lt-library-company-editor__stage { display: block; }

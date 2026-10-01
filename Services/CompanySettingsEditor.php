@@ -4,15 +4,17 @@ namespace Leantime\Plugins\LeanLib\Services;
 
 use Illuminate\Support\Facades\Log;
 use Leantime\Core\Events\EventDispatcher;
+use Leantime\Domain\Plugins\Permissions\PluginsPermissions;
+use Leantime\Domain\Plugins\Services\Plugins as PluginService;
 
 /** Declarative editor model for the Leantime 3.10.0 company settings tabs. */
 class CompanySettingsEditor
 {
     private ?array $cachedWidgetDefinitions = null;
     private const TABS = [
-        'details' => ['id' => 'details', 'label' => 'Details', 'icon' => 'fa fa-building', 'kind' => 'tab'],
-        'apiKeys' => ['id' => 'apiKeys', 'label' => 'API Keys', 'icon' => 'fa-solid fa-key', 'kind' => 'tab'],
-        'integrations' => ['id' => 'integrations', 'label' => 'Integrations', 'icon' => 'fa fa-plug', 'kind' => 'tab'],
+        'details' => ['id' => 'details', 'label' => 'Details', 'icon' => 'fa fa-building', 'regions' => ['content', 'sidebar']],
+        'apiKeys' => ['id' => 'apiKeys', 'label' => 'API Keys', 'icon' => 'fa-solid fa-key', 'regions' => ['content']],
+        'integrations' => ['id' => 'integrations', 'label' => 'Integrations', 'icon' => 'fa fa-plug', 'regions' => ['content']],
     ];
     private function tabDefinition(string $id): ?array { return self::TABS[$id] ?? null; }
 
@@ -42,18 +44,33 @@ class CompanySettingsEditor
                 continue;
             }
             $defaultTab = is_string($widget['tab'] ?? null) && ($widget['tab'] === 'integrations' || $this->tabDefinition($widget['tab']) !== null) ? $widget['tab'] : 'integrations';
+            if (!in_array($widget['region'], $this->regionsForTab($defaultTab), true)) {
+                Log::error('Leantime Library skipped a Company Settings widget with an unsupported home region.', [
+                    'widget_id' => $widget['id'],
+                    'tab' => $defaultTab,
+                    'region' => $widget['region'],
+                ]);
+                continue;
+            }
             $placement = ($widget['placement'] ?? 'region') === 'any' ? 'any' : 'region';
             $widgets[$widget['id']] = ['label' => trim($widget['label']), 'region' => $widget['region'], 'tab' => $defaultTab, 'kind' => 'provider', 'placement' => $placement, 'parkable' => true, 'template' => $widget['template'] ?? null, 'render' => $widget['render'] ?? null, 'data' => $widget['data'] ?? null];
         }
         return $this->cachedWidgetDefinitions = $widgets;
     }
 
+    /** Regions are declared from the native Leantime tab structure, not inferred globally. */
+    public function regionsForTab(string $tabId): array
+    {
+        $tab = $this->tabDefinition($tabId);
+        return $tab['regions'] ?? [];
+    }
+
     public function render(): string
     {
         $layout = $this->layout();
-        $html = '<section class="lt-library-company-editor" data-company-editor data-layout-endpoint="'.htmlspecialchars(rtrim(BASE_URL, '/').'/LeanLib/gui/company-settings', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'" data-integrations-endpoint="'.htmlspecialchars(rtrim(BASE_URL, '/').'/LeanLib/integrations', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'" data-csrf="'.htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'">';
+        $html = '<section class="lt-library-company-editor" data-company-editor data-layout-endpoint="'.htmlspecialchars(rtrim(BASE_URL, '/').'/LeanLib/gui/company-settings', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'" data-csrf="'.htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'">';
         $html .= '<input type="hidden" name="_token" value="'.htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'">';
-        $html .= '<p class="lt-library-workspace__hint">Select a tab, then arrange its content. Generic widgets can move between tabs; constrained widgets stay in their required region. Parked widgets are shared across tabs.</p>';
+        $html .= '<p class="lt-library-workspace__hint">Select a tab to see its available destinations. Generic widgets can move between declared regions; constrained widgets stay in their required region. Parked widgets are out of the layout and retain their last valid destination.</p>';
         $widgetMetadata = array_map(static fn ($widget) => array_intersect_key($widget, array_flip(['label', 'region', 'kind', 'placement', 'tab', 'parkable'])), $layout['widgetDefinitions']);
         $html .= '<div class="lt-library-company-editor__tabs" data-company-editor-tabs data-layout="'.htmlspecialchars(json_encode(['tabs' => $layout['tabs'], 'activeTab' => $layout['activeTab'], 'regions' => $layout['regions'], 'parked' => $layout['parked'], 'parkedTargets' => $layout['parkedTargets'], 'widgetDefinitions' => $widgetMetadata], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'">';
         foreach ($layout['tabs'] as $tabId) {
@@ -95,7 +112,7 @@ class CompanySettingsEditor
         }
         $html .= '<li data-leantimelib-company-tab="integrations"><a href="#integrations"><span class="fa fa-plug"></span> Integrations</a></li>';
         $payload = json_encode(['tabs' => $layout['tabs'], 'widgets' => $layout['regions']], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR);
-        $html .= '<li hidden data-leantimelib-company-layout="'.htmlspecialchars($payload, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'" data-integrations-endpoint="'.$this->e(rtrim(BASE_URL, '/').'/LeanLib/integrations').'"></li>';
+        $html .= '<li hidden data-leantimelib-company-layout="'.htmlspecialchars($payload, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'"></li>';
         echo $html;
     }
 
@@ -107,7 +124,13 @@ class CompanySettingsEditor
             foreach ($tabRegions as $ids) foreach ($ids as $id) if (!isset($allWidgets[$id])) $allWidgets[$id] = $tabId;
         }
         $stashHtml = '';
-        foreach ($allWidgets as $widgetId => $tabId) $stashHtml .= $this->renderLiveWidgets([$widgetId]);
+        foreach ($allWidgets as $widgetId => $tabId) {
+            if ($widgetId === 'company.integrations') {
+                $stashHtml .= $this->renderIntegrationsWidget();
+                continue;
+            }
+            $stashHtml .= $this->renderLiveWidgets([$widgetId]);
+        }
         echo '<div hidden data-company-widget-stash>'.$stashHtml.'</div>';
         foreach ($layout['tabs'] as $id) {
             $isIntegrations = $id === 'integrations';
@@ -135,6 +158,30 @@ class CompanySettingsEditor
             }
         }
         return $html;
+    }
+
+    private function renderIntegrationsWidget(): string
+    {
+        if (!function_exists('can') || !can(PluginsPermissions::MANAGE)) {
+            return '<div data-company-live-widget="company.integrations"><p>You do not have permission to manage integrations.</p></div>';
+        }
+
+        try {
+            $plugins = app(PluginService::class);
+            $content = view()->file(__DIR__.'/../Templates/integrations.blade.php', [
+                'layout' => null,
+                'installedPlugins' => $plugins->getAllPlugins(),
+                'newPlugins' => $plugins->discoverNewPlugins(),
+            ])->render();
+            return '<div data-company-live-widget="company.integrations">'.$content.'</div>';
+        } catch (\Throwable $exception) {
+            Log::error('Leantime Library integrations widget failed to render.', [
+                'exception_class' => $exception::class,
+                'exception_file' => basename($exception->getFile()),
+                'exception_line' => $exception->getLine(),
+            ]);
+            return '<div data-company-live-widget="company.integrations"><p>Integrations could not be loaded. Check the Leantime application log.</p></div>';
+        }
     }
 
     private function renderGenericTemplate(string $template, array $data): string
@@ -165,48 +212,48 @@ class CompanySettingsEditor
         $parked = array_values(array_intersect(array_filter($savedParked, 'is_string'), array_keys($widgets)));
         $parkedTargets = is_array($saved['parkedTargets'] ?? null) ? $saved['parkedTargets'] : [];
         $regions = [];
-        $widgetOwner = [];
         $savedRegions = is_array($saved['regions'] ?? null) ? $saved['regions'] : [];
+        $requestedTabs = [];
         foreach ($savedRegions as $savedTab => $tabRegions) {
             if (!is_array($tabRegions)) continue;
-            foreach ($tabRegions as $regionWidgets) {
-                if (!is_array($regionWidgets)) continue;
-                foreach ($regionWidgets as $widgetId) if (is_string($widgetId) && !isset($widgetOwner[$widgetId])) $widgetOwner[$widgetId] = $savedTab;
+            foreach ($tabRegions as $ids) {
+                if (!is_array($ids)) continue;
+                foreach ($ids as $id) if (is_string($id) && !isset($requestedTabs[$id])) $requestedTabs[$id] = $savedTab;
             }
         }
+        foreach ($tabs as $tabId) $regions[$tabId] = array_fill_keys($this->regionsForTab($tabId), []);
+        $placed = [];
         foreach ($tabs as $tabId) {
-            $regions[$tabId] = ['content' => [], 'sidebar' => [], 'auxiliary' => []];
-            foreach ($widgets as $widget) $regions[$tabId][$widget['region']] ??= [];
-        }
-        foreach ($tabs as $tabId) {
-            $regionNames = array_values(array_unique(array_merge(['content', 'sidebar', 'auxiliary'], array_map(static fn ($widget) => $widget['region'], $widgets))));
-            foreach ($regionNames as $regionName) {
+            foreach (array_keys($regions[$tabId]) as $regionName) {
                 $savedRegionWidgets = is_array($savedRegions[$tabId][$regionName] ?? null) ? $savedRegions[$tabId][$regionName] : [];
-                $ids = array_values(array_intersect(array_filter($savedRegionWidgets, 'is_string'), array_keys($widgets)));
-                $ids = array_values(array_filter($ids, static fn ($id) => ($widgetOwner[$id] ?? $tabId) === $tabId));
-                $ids = array_values(array_filter($ids, fn ($id) => ($widgets[$id]['placement'] ?? 'region') === 'any' || ($widgets[$id]['region'] ?? '') === $regionName));
-                $regions[$tabId][$regionName] = array_values(array_filter($ids, static fn ($id) => !in_array($id, $parked, true)));
-            }
-            foreach ($widgets as $id => $widget) {
-                if (in_array($id, $parked, true) || ($widgetOwner[$id] ?? null) !== $tabId) continue;
-                $found = false;
-                foreach ($regions[$tabId] as $ids) if (in_array($id, $ids, true)) { $found = true; break; }
-                if (!$found) $regions[$tabId][$widget['region']][] = $id;
+                foreach (array_values(array_unique(array_intersect(array_filter($savedRegionWidgets, 'is_string'), array_keys($widgets)))) as $id) {
+                    if (isset($placed[$id]) || in_array($id, $parked, true)) continue;
+                    if (($widgets[$id]['placement'] ?? 'region') !== 'any' && ($widgets[$id]['region'] ?? '') !== $regionName) continue;
+                    $regions[$tabId][$regionName][] = $id;
+                    $placed[$id] = true;
+                }
             }
         }
         foreach ($widgets as $id => $widget) {
-            $tabId = $widget['tab'] ?? 'integrations';
-            if (!in_array($tabId, $tabs, true) || in_array($id, $parked, true)) continue;
-            $alreadyPlaced = false;
-            foreach ($regions[$tabId] as $ids) if (in_array($id, $ids, true)) { $alreadyPlaced = true; break; }
-            $defaultRegion = $widget['region'];
-            if (!$alreadyPlaced) $regions[$tabId][$defaultRegion][] = $id;
+            if (isset($placed[$id]) || in_array($id, $parked, true)) continue;
+            $tab = is_string($requestedTabs[$id] ?? null) && in_array($requestedTabs[$id], $tabs, true)
+                ? $requestedTabs[$id]
+                : (in_array($widget['tab'], $tabs, true) ? $widget['tab'] : ($tabs[0] ?? 'details'));
+            if (($widget['placement'] ?? 'region') !== 'any' && !isset($regions[$tab][$widget['region']])) {
+                $tab = in_array($widget['tab'], $tabs, true) ? $widget['tab'] : ($tabs[0] ?? 'details');
+            }
+            $region = isset($regions[$tab][$widget['region']]) ? $widget['region'] : 'content';
+            $regions[$tab][$region][] = $id;
         }
-        foreach ($parked as $id) foreach ($regions as $tab => $region) foreach ($region as $name => $ids) $regions[$tab][$name] = array_values(array_diff($ids, [$id]));
         foreach ($parked as $id) {
             $target = is_array($parkedTargets[$id] ?? null) ? $parkedTargets[$id] : [];
             $tab = is_string($target['tab'] ?? null) && in_array($target['tab'], $tabs, true) ? $target['tab'] : ($widgets[$id]['tab'] ?? 'integrations');
-            $region = is_string($target['region'] ?? null) && isset($regions[$tab][$target['region']]) ? $target['region'] : $widgets[$id]['region'];
+            if (($widgets[$id]['placement'] ?? 'region') !== 'any' && !isset($regions[$tab][$widgets[$id]['region']])) {
+                $tab = in_array($widgets[$id]['tab'], $tabs, true) ? $widgets[$id]['tab'] : ($tabs[0] ?? 'details');
+            }
+            $region = is_string($target['region'] ?? null) && isset($regions[$tab][$target['region']])
+                && (($widgets[$id]['placement'] ?? 'region') === 'any' || $target['region'] === $widgets[$id]['region'])
+                ? $target['region'] : (isset($regions[$tab][$widgets[$id]['region']]) ? $widgets[$id]['region'] : 'content');
             $parkedTargets[$id] = ['tab' => $tab, 'region' => $region];
         }
         return ['tabs' => $tabs, 'activeTab' => in_array($saved['activeTab'] ?? null, $tabs, true) ? $saved['activeTab'] : ($tabs[0] ?? 'details'), 'regions' => $regions, 'parked' => $parked, 'parkedTargets' => $parkedTargets, 'widgetDefinitions' => $widgets];

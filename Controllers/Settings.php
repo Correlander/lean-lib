@@ -270,21 +270,24 @@ class Settings extends Controller
             $parkedTargets = [];
             $regions = [];
             $placedWidgets = [];
-            $allowedRegions = ['content', 'sidebar', 'auxiliary'];
-            foreach ($widgetDefinitions as $definition) $allowedRegions[] = $definition['region'] ?? 'content';
-            $allowedRegions = array_values(array_unique($allowedRegions));
             foreach ($parked as $widgetId) {
                 $definition = $widgetDefinitions[$widgetId];
                 $target = $validated['parkedTargets'][$widgetId] ?? [];
                 $tab = is_string($target['tab'] ?? null) && in_array($target['tab'], $tabs, true) ? $target['tab'] : ($definition['tab'] ?? $tabs[0]);
+                $allowedRegions = app(\Leantime\Plugins\LeanLib\Services\CompanySettingsEditor::class)->regionsForTab($tab);
+                if (($definition['placement'] ?? 'region') !== 'any' && !in_array($definition['region'] ?? 'content', $allowedRegions, true)) {
+                    $tab = in_array($definition['tab'] ?? null, $tabs, true) ? $definition['tab'] : $tabs[0];
+                    $allowedRegions = app(\Leantime\Plugins\LeanLib\Services\CompanySettingsEditor::class)->regionsForTab($tab);
+                }
                 $region = is_string($target['region'] ?? null) && in_array($target['region'], $allowedRegions, true)
                     && (($definition['placement'] ?? 'region') === 'any' || $target['region'] === ($definition['region'] ?? 'content'))
-                    ? $target['region'] : ($definition['region'] ?? 'content');
+                    ? $target['region'] : (in_array($definition['region'] ?? 'content', $allowedRegions, true) ? $definition['region'] : 'content');
                 $parkedTargets[$widgetId] = ['tab' => $tab, 'region' => $region];
             }
             foreach ($tabs as $tab) {
                 foreach ($validated['regions'][$tab] ?? [] as $regionName => $requested) {
                     if (!is_string($regionName) || !preg_match('/^[a-zA-Z][a-zA-Z0-9_-]{0,39}$/', $regionName) || !is_array($requested)) continue;
+                    $allowedRegions = app(\Leantime\Plugins\LeanLib\Services\CompanySettingsEditor::class)->regionsForTab($tab);
                     if (!in_array($regionName, $allowedRegions, true)) continue;
                     foreach (array_values(array_unique(array_intersect($requested, $availableWidgets))) as $widgetId) {
                         if (in_array($widgetId, $parked, true) || in_array($widgetId, $placedWidgets, true)) continue;
@@ -303,7 +306,7 @@ class Settings extends Controller
                     $preferredTab = $definition['tab'] ?? 'integrations';
                     $tab = in_array($preferredTab, $tabs, true) ? $preferredTab : $tabs[0];
                     $regionName = $definition['region'] ?? 'content';
-                    if (!isset($regions[$tab][$regionName])) $regions[$tab][$regionName] = [];
+                    if (!isset($regions[$tab][$regionName])) $regionName = 'content';
                     $regions[$tab][$regionName][] = $id;
                     $placedWidgets[] = $id;
                 }

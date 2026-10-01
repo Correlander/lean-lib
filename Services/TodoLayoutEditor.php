@@ -112,8 +112,8 @@ class TodoLayoutEditor
     private function renderContentWidgetZones(array $layout, string $tabId, bool $global, bool $canEdit): string
     {
         $regions = $layout['regions'][$tabId] ?? [];
-        $names = array_values(array_unique(array_merge(['content', 'main', 'sidebar', 'auxiliary'], array_keys($regions))));
-        $html = '<section class="lt-library-generic-widgets"><h4>Generic widgets</h4><div class="lt-library-generic-widgets__grid">';
+        $names = array_keys($regions);
+        $html = '<section class="lt-library-generic-widgets"><h4>Plugin widget slots</h4><p class="lt-library-workspace__hint">Slots are active destinations on this tab. Parked widgets are out of the layout and return to their last valid destination when restored.</p><div class="lt-library-generic-widgets__grid">';
         foreach ($names as $region) {
             $html .= '<div class="lt-library-generic-widgets__slot"><strong>'.$this->e(ucfirst($region)).'</strong><ol data-todo-generic-region="'.$this->e($tabId).':'.$this->e($region).'">';
             foreach ($regions[$region] ?? [] as $id) {

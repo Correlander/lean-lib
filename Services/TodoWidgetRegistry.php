@@ -39,6 +39,14 @@ class TodoWidgetRegistry
                 continue;
             }
             $tab = is_string($widget['tab'] ?? null) && in_array($widget['tab'], $tabs, true) ? $widget['tab'] : ($tabs[0] ?? 'ticketdetails');
+            if (!in_array($region, $this->regionsForTab($tab), true)) {
+                Log::error('Leantime Library skipped a To-do widget with an unsupported home region.', [
+                    'widget_id' => $id,
+                    'tab' => $tab,
+                    'region' => $region,
+                ]);
+                continue;
+            }
             $widgets[$id] = [
                 'id' => $id,
                 'label' => trim($label),
@@ -54,6 +62,12 @@ class TodoWidgetRegistry
         return $widgets;
     }
 
+    /** Native regions reflect the actual To-do tab: only Details has form/sidebar slots. */
+    private function regionsForTab(string $tab): array
+    {
+        return $tab === 'ticketdetails' ? ['content', 'main', 'sidebar', 'auxiliary'] : ['content'];
+    }
+
     public function layout(mixed $ticket = null, ?int $requestedProjectId = null): array
     {
         $projectId = $requestedProjectId ?? (int) (is_object($ticket) ? ($ticket->projectId ?? 0) : 0);
@@ -67,10 +81,7 @@ class TodoWidgetRegistry
         $parked = array_values(array_intersect(array_filter($saved['parked'] ?? [], 'is_string'), array_keys($widgets)));
         $parkedTargets = is_array($saved['parkedTargets'] ?? null) ? $saved['parkedTargets'] : [];
         $regions = [];
-        foreach ($tabs as $tab) {
-            $regions[$tab] = ['content' => [], 'main' => [], 'sidebar' => [], 'auxiliary' => []];
-            foreach ($widgets as $widget) $regions[$tab][$widget['region']] ??= [];
-        }
+        foreach ($tabs as $tab) $regions[$tab] = array_fill_keys($this->regionsForTab($tab), []);
         $savedRegions = is_array($saved['regions'] ?? null) ? $saved['regions'] : [];
         $owners = [];
         foreach ($savedRegions as $tab => $tabRegions) {
@@ -91,16 +102,25 @@ class TodoWidgetRegistry
             if (in_array($id, $parked, true)) continue;
             $tab = $owners[$id] ?? $widget['tab'];
             if (!in_array($tab, $tabs, true)) $tab = $widget['tab'];
+            if ($widget['placement'] !== 'any' && !isset($regions[$tab][$widget['region']])) {
+                $tab = in_array($widget['tab'], $tabs, true) ? $widget['tab'] : ($tabs[0] ?? 'ticketdetails');
+            }
             $found = false;
             foreach ($regions[$tab] as $ids) if (in_array($id, $ids, true)) { $found = true; break; }
-            if (!$found) $regions[$tab][$widget['region']][] = $id;
+            if (!$found) {
+                $region = isset($regions[$tab][$widget['region']]) ? $widget['region'] : 'content';
+                $regions[$tab][$region][] = $id;
+            }
         }
         foreach ($parked as $id) {
             $target = is_array($parkedTargets[$id] ?? null) ? $parkedTargets[$id] : [];
             $tab = is_string($target['tab'] ?? null) && in_array($target['tab'], $tabs, true) ? $target['tab'] : $widgets[$id]['tab'];
+            if ($widgets[$id]['placement'] !== 'any' && !isset($regions[$tab][$widgets[$id]['region']])) {
+                $tab = in_array($widgets[$id]['tab'], $tabs, true) ? $widgets[$id]['tab'] : ($tabs[0] ?? 'ticketdetails');
+            }
             $region = is_string($target['region'] ?? null) && isset($regions[$tab][$target['region']])
                 && ($widgets[$id]['placement'] === 'any' || $target['region'] === $widgets[$id]['region'])
-                ? $target['region'] : $widgets[$id]['region'];
+                ? $target['region'] : (isset($regions[$tab][$widgets[$id]['region']]) ? $widgets[$id]['region'] : 'content');
             $parkedTargets[$id] = ['tab' => $tab, 'region' => $region];
         }
         return ['regions' => $regions, 'parked' => $parked, 'parkedTargets' => $parkedTargets, 'definitions' => $widgets];
@@ -112,22 +132,24 @@ class TodoWidgetRegistry
         $tabs = array_column($this->tabs->getTabs(null, false, $projectId), 'id');
         $parked = array_values(array_unique(array_intersect(array_filter($parked, 'is_string'), array_keys($widgets))));
         $parkedTargets = [];
-        $supportedRegions = ['content', 'main', 'sidebar', 'auxiliary'];
-        foreach ($widgets as $widget) $supportedRegions[] = $widget['region'];
-        $supportedRegions = array_values(array_unique($supportedRegions));
         foreach ($parked as $id) {
             $target = is_array($requestedParkedTargets[$id] ?? null) ? $requestedParkedTargets[$id] : [];
             $tab = is_string($target['tab'] ?? null) && in_array($target['tab'], $tabs, true) ? $target['tab'] : $widgets[$id]['tab'];
+            $supportedRegions = $this->regionsForTab($tab);
+            if ($widgets[$id]['placement'] !== 'any' && !in_array($widgets[$id]['region'], $supportedRegions, true)) {
+                $tab = in_array($widgets[$id]['tab'], $tabs, true) ? $widgets[$id]['tab'] : ($tabs[0] ?? 'ticketdetails');
+                $supportedRegions = $this->regionsForTab($tab);
+            }
             $region = is_string($target['region'] ?? null) && in_array($target['region'], $supportedRegions, true)
                 && ($widgets[$id]['placement'] === 'any' || $target['region'] === $widgets[$id]['region'])
-                ? $target['region'] : $widgets[$id]['region'];
+                ? $target['region'] : (in_array($widgets[$id]['region'], $supportedRegions, true) ? $widgets[$id]['region'] : 'content');
             $parkedTargets[$id] = ['tab' => $tab, 'region' => $region];
         }
         $normalized = [];
         $placed = [];
         foreach ($tabs as $tab) {
             foreach (($regions[$tab] ?? []) as $region => $ids) {
-                if (!is_string($region) || !in_array($region, $supportedRegions, true) || !is_array($ids)) continue;
+                if (!is_string($region) || !in_array($region, $this->regionsForTab($tab), true) || !is_array($ids)) continue;
                 foreach (array_values(array_unique(array_intersect(array_filter($ids, 'is_string'), array_keys($widgets)))) as $id) {
                     if (isset($placed[$id]) || in_array($id, $parked, true)) continue;
                     $widget = $widgets[$id];

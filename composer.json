@@ -1,7 +1,7 @@
 {
   "name": "lean-lib",
   "description": "Central contribution registry for Leantime plugins, including tab-aware GUI customization and integrations.",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "homepage": "https://github.com/Correlander/leantime-lib",
   "authors": [
     {

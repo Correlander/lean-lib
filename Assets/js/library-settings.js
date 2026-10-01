@@ -31,6 +31,22 @@
             autosaveStatus.dataset.saveState = state || '';
         }
 
+        function selectTodoPreviewTab(tabId) {
+            workspace.querySelectorAll('[data-todo-preview-panel]').forEach((panel) => {
+                panel.hidden = panel.dataset.todoPreviewPanel !== tabId;
+            });
+            workspace.querySelectorAll('[data-library-zone="tabs"] > [data-widget-kind="tabs"]').forEach((tab) => {
+                const selected = tab.dataset.widgetId === tabId;
+                tab.classList.toggle('is-preview-active', selected);
+                tab.setAttribute('aria-current', selected ? 'true' : 'false');
+            });
+            const activeInput = workspace.querySelector('[data-todo-active-tab]');
+            if (activeInput) activeInput.value = tabId;
+        }
+
+        const initialPreviewTab = workspace.querySelector('[data-todo-preview-panel]:not([hidden])');
+        if (initialPreviewTab) selectTodoPreviewTab(initialPreviewTab.dataset.todoPreviewPanel);
+
         function hasBlankNewSection() {
             return Array.from(workspace.querySelectorAll('[data-section-new] [data-section-label-input]'))
                 .some((input) => !input.value.trim());
@@ -546,11 +562,9 @@
                 return;
             }
             const tabItem = event.target.closest('[data-widget-kind="tabs"]');
-            if (tabItem && workspace.contains(tabItem)) {
+            if (tabItem && workspace.contains(tabItem) && tabItem.parentElement?.dataset.libraryZone === 'tabs') {
                 const panelId = tabItem.dataset.widgetId;
-                workspace.querySelectorAll('[data-todo-preview-panel]').forEach((panel) => { panel.hidden = panel.dataset.todoPreviewPanel !== panelId; });
-                const activeInput = workspace.querySelector('[data-todo-active-tab]');
-                if (activeInput) activeInput.value = panelId;
+                selectTodoPreviewTab(panelId);
                 scheduleSave();
             }
             const resetButton = event.target.closest('[data-layout-reset-preview]');
@@ -620,7 +634,22 @@
             const zone = name === 'sidebar' && item.dataset.parentSection
                 ? groupZone(item.dataset.parentSection)
                 : workspace.querySelector('[data-library-zone="' + name + '"]');
-            if (zone) { zone.appendChild(item); place(item, zone); scheduleSave(); }
+            if (zone) {
+                const tabPanel = item.dataset.widgetKind === 'tabs'
+                    ? workspace.querySelector('[data-todo-preview-panel="' + CSS.escape(item.dataset.widgetId) + '"]')
+                    : null;
+                const wasSelected = !!(tabPanel && !tabPanel.hidden);
+                zone.appendChild(item);
+                place(item, zone);
+                if (tabPanel && name === 'parked') {
+                    tabPanel.hidden = true;
+                    if (wasSelected) {
+                        const nextTab = workspace.querySelector('[data-library-zone="tabs"] > [data-widget-kind="tabs"]');
+                        if (nextTab) selectTodoPreviewTab(nextTab.dataset.widgetId);
+                    }
+                }
+                scheduleSave();
+            }
         });
 
         workspace.addEventListener('input', function (event) {

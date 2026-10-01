@@ -655,6 +655,18 @@
     cursor: grab;
 }
 
+.lt-library-ticket__tabstrip .lt-library-widget.is-preview-active {
+    border-color: var(--main-action-color, #0874a7);
+    background: var(--main-action-color, #0874a7);
+    color: #fff;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--main-action-color, #0874a7) 28%, transparent);
+}
+
+.lt-library-ticket__tabstrip .lt-library-widget.is-preview-active .lt-library-widget__mock,
+.lt-library-ticket__tabstrip .lt-library-widget.is-preview-active small {
+    color: rgba(255, 255, 255, .85);
+}
+
 .lt-library-ticket__body {
     display: grid;
     grid-template-columns: minmax(0, 2.2fr) minmax(205px, .92fr) minmax(175px, .72fr);

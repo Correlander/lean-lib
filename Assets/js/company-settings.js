@@ -105,25 +105,6 @@
             });
         });
         if (stash) stash.remove();
-        const integrationsWidget = root.querySelector('[data-company-live-widget="company.integrations"]');
-        if (integrationsWidget && !integrationsWidget.querySelector('[data-library-integrations-content]')) {
-            const endpoint = root.dataset.integrationsEndpoint || config.dataset.integrationsEndpoint || '';
-            if (endpoint) {
-                fetch(endpoint, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                .then((response) => { if (!response.ok) throw new Error('Integrations content unavailable'); return response.text(); })
-                    .then((html) => {
-                        const documentFragment = new DOMParser().parseFromString(html, 'text/html');
-                        const content = documentFragment.querySelector('[data-library-integrations-page]');
-                        if (!content) throw new Error('Integrations content unavailable');
-                        content.dataset.libraryIntegrationsContent = '';
-                        content.querySelectorAll('script, iframe, object, embed').forEach((element) => element.remove());
-                        integrationsWidget.appendChild(content);
-                    })
-                    .catch(() => {
-                        integrationsWidget.textContent = 'Integrations could not be loaded for this account.';
-                    });
-            }
-        }
         root.dataset.leantimelibCompanyLayoutApplied = '1';
         if (window.jQuery) {
             try {
