@@ -24,6 +24,8 @@ if ($fastOnboarding) {
     $registration->registerMiddleware([\Leantime\Plugins\LeanLib\Services\NoProjectRedirect::class]);
 }
 
+$registration->registerMiddleware([\Leantime\Plugins\LeanLib\Services\PluginManagementRedirect::class]);
+
 EventDispatcher::add_event_listener('leantime.*.afterLinkTags', function () use ($fastOnboarding): void {
     $preferences = json_encode(
         ['fastOnboarding' => $fastOnboarding, 'appUrl' => rtrim(BASE_URL, '/')],

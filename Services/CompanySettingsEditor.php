@@ -176,10 +176,14 @@ class CompanySettingsEditor
 
         try {
             $plugins = app(PluginService::class);
+            $installed = $plugins->getAllPlugins();
+            $installed = is_array($installed) ? $installed : [];
+            $preflight = app(PluginPreflight::class);
             $content = view()->file(__DIR__.'/../Templates/integrations.blade.php', [
                 'layout' => null,
-                'installedPlugins' => $plugins->getAllPlugins(),
-                'newPlugins' => $plugins->discoverNewPlugins(),
+                'installedPlugins' => $installed,
+                'newPlugins' => $preflight->discover($plugins, $installed),
+                'pluginPreflight' => $preflight->checksForDisabled($installed),
             ])->render();
             return '<div data-company-live-widget="company.integrations">'.$content.'</div>';
         } catch (\Throwable $exception) {

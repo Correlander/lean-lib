@@ -203,6 +203,17 @@
 .lt-library-manager__settings h4 {
     margin-top: 0;
 }
+.lt-library-manager__action-form {
+    display: inline-block;
+    margin: .25rem .45rem .25rem 0;
+}
+.lt-library-manager__preflight {
+    margin: 1rem 0;
+}
+.lt-library-manager__preflight ul {
+    margin-bottom: 0;
+    padding-left: 1.25rem;
+}
 .lt-library-manager__empty {
     padding: .75rem .25rem;
     color: var(--library-muted);

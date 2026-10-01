@@ -9,7 +9,7 @@
     }
     foreach ($newPlugins as $plugin) {
         if (!is_object($plugin) || !is_string($plugin->foldername ?? null)) continue;
-        $managerEntries[] = ['plugin' => $plugin, 'state' => 'available'];
+        $managerEntries[] = ['plugin' => $plugin, 'state' => !empty($plugin->preflightValid) ? 'available' : 'invalid'];
     }
     usort($managerEntries, static fn (array $a, array $b): int => strcasecmp((string) ($a['plugin']->name ?? $a['plugin']->foldername), (string) ($b['plugin']->name ?? $b['plugin']->foldername)));
 
@@ -61,7 +61,7 @@
                 data-endpoint="{{ rtrim(BASE_URL, '/') }}/LeanLib/plugins/check-for-updates"
                 data-csrf="{{ csrf_token() }}">
                 <i class="fa-solid fa-rotate" aria-hidden="true"></i>
-                <span>Check for updates</span>
+                <span>Refresh metadata</span>
             </button>
             <span role="status" aria-live="polite" data-plugin-metadata-status hidden></span>
         </div>
@@ -84,7 +84,7 @@
                     <span class="lt-library-manager__plugin-icon" aria-hidden="true"><i class="fa-solid fa-puzzle-piece"></i></span>
                     <span class="lt-library-manager__plugin-copy">
                         <strong>{{ $item->name ?: $item->foldername }}</strong>
-                        <small>{{ $entry['state'] === 'installed' ? (!empty($item->enabled) ? 'Enabled' : 'Disabled') : 'Ready to activate' }}</small>
+                        <small>{{ $entry['state'] === 'installed' ? (!empty($item->enabled) ? 'Enabled' : 'Disabled') : ($entry['state'] === 'invalid' ? 'Metadata needs fixes' : 'Ready to install') }}</small>
                     </span>
                     <i class="fa-solid fa-chevron-right lt-library-manager__chevron" aria-hidden="true"></i>
                 </a>
@@ -105,6 +105,10 @@
                     $plugin = $selectedEntry['plugin'];
                     $description = is_string($plugin->description ?? null) ? trim($plugin->description) : '';
                     $homepage = is_string($plugin->homepage ?? null) && filter_var($plugin->homepage, FILTER_VALIDATE_URL) && in_array(strtolower((string) parse_url($plugin->homepage, PHP_URL_SCHEME)), ['http', 'https'], true) ? $plugin->homepage : null;
+                    $pluginId = isset($plugin->id) ? (string) $plugin->id : '';
+                    $metadataCheck = $selectedEntry['state'] === 'invalid'
+                        ? ['valid' => false, 'errors' => is_array($plugin->preflightErrors ?? null) ? $plugin->preflightErrors : []]
+                        : ($pluginPreflight[$pluginId] ?? ['valid' => true, 'errors' => []]);
                 @endphp
                 <div class="lt-library-manager__detail-top">
                     <span class="lt-library-manager__detail-icon" aria-hidden="true"><i class="fa-solid fa-puzzle-piece"></i></span>
@@ -113,7 +117,7 @@
                         <h3>{{ $plugin->name ?: $plugin->foldername }}</h3>
                     </div>
                     <span class="lt-library-manager__state{{ $selectedEntry['state'] === 'installed' && !empty($plugin->enabled) ? ' is-enabled' : '' }}">
-                        {{ $selectedEntry['state'] === 'available' ? 'Available' : (!empty($plugin->enabled) ? 'Enabled' : 'Disabled') }}
+                        {{ $selectedEntry['state'] === 'available' ? 'Ready to install' : ($selectedEntry['state'] === 'invalid' ? 'Needs metadata fixes' : (!empty($plugin->enabled) ? 'Enabled' : 'Disabled')) }}
                     </span>
                 </div>
 
@@ -136,15 +140,60 @@
                     @if ($homepage) <div><dt>Website</dt><dd><a href="{{ $homepage }}" target="_blank" rel="noopener noreferrer">{{ $homepage }}</a></dd></div> @endif
                 </dl>
 
+                @if ($selectedEntry['state'] === 'invalid' || ($selectedEntry['state'] === 'installed' && !$metadataCheck['valid']))
+                    <div class="alert alert-warning lt-library-manager__preflight" role="status">
+                        <strong>Metadata preflight blocked activation.</strong>
+                        <ul>
+                            @foreach ($metadataCheck['errors'] as $error)<li>{{ $error }}</li>@endforeach
+                        </ul>
+                    </div>
+                @endif
+
                 <div class="lt-library-manager__settings">
-                    <h4>Settings</h4>
+                    <h4>Manage this plugin</h4>
                     @if ($pluginSettingsUrl)
                         <p>This plugin provides its own settings page.</p>
                         <a class="btn btn-default" href="{{ $pluginSettingsUrl }}"><i class="fa-solid fa-gear" aria-hidden="true"></i> Open settings</a>
+                    @endif
+
+                    @if ($selectedEntry['state'] === 'available')
+                        <form method="post" action="{{ rtrim(BASE_URL, '/') }}/LeanLib/integrations/action" class="lt-library-manager__action-form">
+                            @csrf
+                            <input type="hidden" name="action" value="install">
+                            <input type="hidden" name="plugin" value="{{ $plugin->foldername }}">
+                            <button class="btn btn-primary" type="submit">Install plugin</button>
+                        </form>
                     @elseif ($selectedEntry['state'] === 'installed')
-                        <p>This plugin does not expose a settings page.</p>
+                        @if (($plugin->type ?? '') === 'system')
+                            <p>Leantime manages this system plugin through configuration.</p>
+                        @elseif (!empty($plugin->enabled))
+                            <form method="post" action="{{ rtrim(BASE_URL, '/') }}/LeanLib/integrations/action" class="lt-library-manager__action-form">
+                                @csrf
+                                <input type="hidden" name="action" value="disable">
+                                <input type="hidden" name="plugin" value="{{ $plugin->id }}">
+                                <button class="btn btn-default" type="submit">Disable</button>
+                            </form>
+                        @elseif ($metadataCheck['valid'])
+                            <form method="post" action="{{ rtrim(BASE_URL, '/') }}/LeanLib/integrations/action" class="lt-library-manager__action-form">
+                                @csrf
+                                <input type="hidden" name="action" value="enable">
+                                <input type="hidden" name="plugin" value="{{ $plugin->id }}">
+                                <button class="btn btn-primary" type="submit">Enable</button>
+                            </form>
+                        @endif
+
+                        @if (($plugin->type ?? '') !== 'system')
+                            <form method="post" action="{{ rtrim(BASE_URL, '/') }}/LeanLib/integrations/action" class="lt-library-manager__action-form" data-plugin-remove-form data-plugin-name="{{ $plugin->name ?: $plugin->foldername }}">
+                                @csrf
+                                <input type="hidden" name="action" value="remove">
+                                <input type="hidden" name="plugin" value="{{ $plugin->id }}">
+                                <button class="btn btn-default" type="submit">Remove registration</button>
+                            </form>
+                            <p>Leantime removes the plugin record and may run its uninstall handler. Plugin files stay on disk and will appear as available again until removed from the server.</p>
+                        @endif
+                        @if (!$pluginSettingsUrl && !empty($plugin->enabled)) <p>This plugin does not expose a settings page.</p> @endif
                     @else
-                        <p>Activation controls will be available here after plugin metadata preflight is in place.</p>
+                        <p>Fix the metadata above before this plugin can be registered.</p>
                     @endif
                 </div>
             @endif

@@ -839,6 +839,7 @@
         button.addEventListener('click', async function () {
             if (button.disabled) return;
             const originalLabel = button.querySelector('span');
+            const originalText = originalLabel ? originalLabel.textContent : '';
             button.disabled = true;
             button.setAttribute('aria-busy', 'true');
             if (originalLabel) originalLabel.textContent = 'Checking…';
@@ -864,6 +865,9 @@
                     status.textContent = result.message || 'Plugin metadata is up to date.';
                     status.hidden = false;
                 }
+                if (document.querySelector('[data-library-manager]')) {
+                    window.setTimeout(function () { window.location.reload(); }, 900);
+                }
             } catch (error) {
                 if (status) {
                     status.textContent = error.message || 'Plugin metadata refresh failed.';
@@ -874,7 +878,20 @@
             } finally {
                 button.disabled = false;
                 button.removeAttribute('aria-busy');
-                if (originalLabel) originalLabel.textContent = 'Check for updates';
+                if (originalLabel) originalLabel.textContent = originalText;
+            }
+        });
+    }
+
+    function installPluginManager(manager) {
+        if (manager.dataset.managerInstalled === '1') return;
+        manager.dataset.managerInstalled = '1';
+        manager.addEventListener('submit', function (event) {
+            const form = event.target.closest('[data-plugin-remove-form]');
+            if (!form) return;
+            const name = form.dataset.pluginName || 'this plugin';
+            if (!window.confirm('Remove the Leantime registration for ' + name + '? Leantime may run its uninstall handler; plugin files will remain on disk.')) {
+                event.preventDefault();
             }
         });
     }
@@ -1047,8 +1064,10 @@
 
     function scan(root) {
         if (root.matches && root.matches('[data-library-workspace]')) installWorkspace(root);
+        if (root.matches && root.matches('[data-library-manager]')) installPluginManager(root);
         if (root.querySelectorAll) {
             root.querySelectorAll('[data-library-workspace]').forEach(installWorkspace);
+            root.querySelectorAll('[data-library-manager]').forEach(installPluginManager);
             root.querySelectorAll('[data-library-layout-editor]').forEach(installLayoutEditor);
             root.querySelectorAll('[data-field-editor]').forEach(installFieldEditor);
             root.querySelectorAll('[data-company-editor]').forEach(installCompanyEditor);

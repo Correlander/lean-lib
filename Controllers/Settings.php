@@ -17,6 +17,8 @@ use Leantime\Plugins\LeanLib\Services\TodoTabRegistry;
 use Leantime\Plugins\LeanLib\Services\GuiSurfaceRegistry;
 use Leantime\Plugins\LeanLib\Services\SettingsPage;
 use Leantime\Plugins\LeanLib\Services\SettingsPageBlock;
+use Leantime\Plugins\LeanLib\Services\PluginPreflight;
+use Throwable;
 
 class Settings extends Controller
 {
@@ -325,9 +327,16 @@ class Settings extends Controller
     {
         $plugins = app(PluginService::class);
         $installed = $plugins->getAllPlugins();
-        $discovered = $plugins->discoverNewPlugins();
+        $installed = is_array($installed) ? $installed : [];
+        $preflight = app(PluginPreflight::class);
+        $discovered = $preflight->discover($plugins, $installed);
         $layout = app(\Leantime\Plugins\LeanLib\Services\CompanySettingsEditor::class)->layout();
-        $content = view()->file(__DIR__.'/../Templates/integrations.blade.php', ['layout' => $layout, 'installedPlugins' => $installed, 'newPlugins' => $discovered])->render();
+        $content = view()->file(__DIR__.'/../Templates/integrations.blade.php', [
+            'layout' => $layout,
+            'installedPlugins' => $installed,
+            'newPlugins' => $discovered,
+            'pluginPreflight' => $preflight->checksForDisabled($installed),
+        ])->render();
         $this->tpl->assign('settingsContent', $content);
         return $this->tpl->display('leanlib.integrations-page');
     }
@@ -335,24 +344,100 @@ class Settings extends Controller
     #[RequiresPermission(PluginsPermissions::MANAGE, global: true)]
     public function activatePlugin(): mixed
     {
+        return $this->handlePluginAction('install');
+    }
+
+    #[RequiresPermission(PluginsPermissions::MANAGE, global: true)]
+    public function managePlugin(): mixed
+    {
+        $action = request()->input('action');
+        if (!is_string($action) || !in_array($action, ['install', 'enable', 'disable', 'remove'], true)) {
+            abort(422, 'The plugin action is invalid.');
+        }
+        return $this->handlePluginAction($action);
+    }
+
+    private function handlePluginAction(string $action): mixed
+    {
         $sessionToken = session()->token();
         $requestToken = request()->input('_token', request()->header('X-CSRF-TOKEN'));
         if (!is_string($sessionToken) || !is_string($requestToken) || !hash_equals($sessionToken, $requestToken)) {
             abort(419, 'The session token is invalid. Refresh the page and try again.');
         }
-        $id = request()->input('plugin');
-        if (!is_string($id) || !preg_match('/^[a-zA-Z0-9_-]{1,80}$/', $id)) {
-            abort(422, 'The plugin identifier is invalid.');
-        }
+
         $plugins = app(PluginService::class);
-        $discoveredIds = array_map(static fn ($plugin) => is_object($plugin) ? ($plugin->foldername ?? null) : null, $plugins->discoverNewPlugins());
-        if (!in_array($id, $discoveredIds, true)) abort(404, 'The plugin is not available to install.');
-        $result = $plugins->performPluginAction('install', $id);
-        if (is_array($result) && isset($result[1]) && $result[1] === 'error') {
-            $this->tpl->setNotification((string) ($result[0] ?? 'The plugin could not be activated.'), 'error');
+        $installed = $plugins->getAllPlugins();
+        $installed = is_array($installed) ? $installed : [];
+        $pluginInput = request()->input('plugin');
+        $folder = '';
+        $id = null;
+
+        if ($action === 'install') {
+            if (!is_string($pluginInput) || !preg_match('/^[a-zA-Z0-9_.-]{1,100}$/', $pluginInput)) {
+                abort(422, 'The plugin folder identifier is invalid.');
+            }
+            foreach ($installed as $plugin) {
+                if (is_object($plugin) && is_string($plugin->foldername ?? null) && strcasecmp($plugin->foldername, $pluginInput) === 0) {
+                    $this->tpl->setNotification('This plugin is already registered with Leantime.', 'error');
+                    return $this->managerRedirect($plugin->foldername);
+                }
+            }
+            $check = app(PluginPreflight::class)->inspect($pluginInput);
+            if (!$check['valid']) {
+                $this->tpl->setNotification('Plugin metadata preflight failed: '.implode(' ', $check['errors']), 'error');
+                return $this->managerRedirect($pluginInput);
+            }
+            $folder = $pluginInput;
+            $id = $pluginInput;
         } else {
-            $this->tpl->setNotification((string) ($result[0] ?? 'Plugin activated.'), 'success');
+            if (!is_string($pluginInput) || !ctype_digit($pluginInput) || (int) $pluginInput < 1) {
+                abort(422, 'The installed plugin identifier is invalid.');
+            }
+            $id = (int) $pluginInput;
+            $selected = null;
+            foreach ($installed as $plugin) {
+                if (is_object($plugin) && isset($plugin->id) && (int) $plugin->id === $id) {
+                    $selected = $plugin;
+                    break;
+                }
+            }
+            if ($selected === null || !is_string($selected->foldername ?? null) || ($selected->type ?? '') === 'system') {
+                abort(404, 'The installed plugin was not found or cannot be managed.');
+            }
+            $folder = $selected->foldername;
+            if ($action === 'enable') {
+                $check = app(PluginPreflight::class)->inspect($folder);
+                if (!$check['valid']) {
+                    $this->tpl->setNotification('Plugin metadata preflight failed: '.implode(' ', $check['errors']), 'error');
+                    return $this->managerRedirect($folder);
+                }
+            }
         }
-        return Frontcontroller::redirect(BASE_URL.'/LeanLib/integrations');
+
+        try {
+            $result = $plugins->performPluginAction($action, $id);
+            if (is_array($result) && isset($result[1]) && $result[1] === 'error') {
+                $this->tpl->setNotification((string) ($result[0] ?? 'The plugin action failed.'), 'error');
+            } else {
+                $this->tpl->setNotification((string) ($result[0] ?? 'Plugin action completed.'), 'success');
+            }
+        } catch (Throwable $exception) {
+            Log::error('Leantime Library plugin lifecycle action failed.', [
+                'action' => $action,
+                'plugin_folder' => $folder,
+                'exception_class' => $exception::class,
+                'exception_file' => basename($exception->getFile()),
+                'exception_line' => $exception->getLine(),
+            ]);
+            $this->tpl->setNotification('Leantime could not complete this plugin action. Check the application log.', 'error');
+        }
+
+        return $this->managerRedirect($folder);
+    }
+
+    private function managerRedirect(string $folder): mixed
+    {
+        $query = $folder !== '' ? '?'.http_build_query(['libraryPlugin' => $folder]) : '';
+        return Frontcontroller::redirect(rtrim(BASE_URL, '/').'/setting/editCompanySettings'.$query.'#integrations');
     }
 }

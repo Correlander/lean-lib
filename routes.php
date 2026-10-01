@@ -25,7 +25,8 @@ Route::post('/LeanLib/plugins/check-for-updates', [Settings::class, 'syncPluginM
 
 Route::get('/LeanLib/integrations', [Settings::class, 'integrations'])->name('leanLib.integrations');
 Route::post('/LeanLib/gui/company-settings', [Settings::class, 'saveCompanySettingsLayout'])->name('leanLib.gui.companySettings.save');
-Route::post('/LeanLib/integrations/activate', [Settings::class, 'activatePlugin'])->name('leanLib.integrations.activate');
+Route::post('/LeanLib/integrations/activate', [Settings::class, 'activatePlugin'])->name('leanLib.integrations.activate'); // Backward-compatible install action; now preflighted.
+Route::post('/LeanLib/integrations/action', [Settings::class, 'managePlugin'])->name('leanLib.integrations.action');
 
 // Backward-compatible aliases for installs that still have the previous folder ID in links.
 Route::get('/LeantimeLib/projectIntegrations/{projectId}', [ProjectIntegrations::class, 'show']);
@@ -37,5 +38,6 @@ Route::post('/LeantimeLib/plugins/check-for-updates', [Settings::class, 'syncPlu
 Route::get('/LeantimeLib/integrations', [Settings::class, 'integrations']);
 Route::post('/LeantimeLib/gui/company-settings', [Settings::class, 'saveCompanySettingsLayout']);
 Route::post('/LeantimeLib/integrations/activate', [Settings::class, 'activatePlugin']);
+Route::post('/LeantimeLib/integrations/action', [Settings::class, 'managePlugin']);
 Route::get('/LeantimeLib/settings', [Settings::class, 'get']);
 Route::post('/LeantimeLib/settings', [Settings::class, 'post']);
