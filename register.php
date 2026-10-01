@@ -3,6 +3,7 @@
 use Leantime\Core\Events\EventDispatcher;
 use Leantime\Domain\Plugins\Services\Registration;
 use Leantime\Domain\Setting\Services\Setting as SettingService;
+use Leantime\Plugins\LeanLib\Services\AccountIntegrationRegistry;
 use Leantime\Plugins\LeanLib\Services\TodoSectionRegistry;
 use Leantime\Plugins\LeanLib\Services\TodoTabRegistry;
 use Leantime\Plugins\LeanLib\Services\UserSchedulePanel;
@@ -42,6 +43,8 @@ EventDispatcher::add_event_listener(
 
 EventDispatcher::add_event_listener('leantime.domain.setting.templates.editCompanySettings.tabs', [CompanySettingsEditor::class, 'renderTabHeader']);
 EventDispatcher::add_event_listener('leantime.domain.setting.templates.editCompanySettings.tabsContent', [CompanySettingsEditor::class, 'renderTabContent']);
+EventDispatcher::add_event_listener('leantime.domain.users.templates.editOwn.tabs', [AccountIntegrationRegistry::class, 'renderTabHeader']);
+EventDispatcher::add_event_listener('leantime.domain.users.templates.editOwn.tabsContent', [AccountIntegrationRegistry::class, 'renderTabContent']);
 
 if ($fastOnboarding) {
     EventDispatcher::add_event_listener('leantime.domain.users.templates.editOwn.tabs', [UserSchedulePanel::class, 'renderTabHeader']);

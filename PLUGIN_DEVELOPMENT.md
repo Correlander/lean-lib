@@ -46,6 +46,33 @@ $panels[] = [
 
 The `data` callback is optional when a view needs no project-specific data. The provider supplies the view and its data; the Library owns the shared outer layout, project ordering, and override UI. A trusted `render` callback remains available for unusual panels. Multiple panels are supported; use stable provider-prefixed IDs to avoid collisions. Keep project repository settings and validation in the provider panel. The Library does not determine whether a provider allows one or multiple repository connections.
 
+## User account → Connected accounts
+
+Available in lean-lib 0.22.0, providers may contribute the signed-in user's connection panel to the self-service account page through `leantime.plugins.leantimelib.user.integrations.accounts`. The Library adds a **Connected accounts** tab only when at least one valid contribution exists and wraps each contribution in a shared section. This additive hook does not require a data migration. The Library does not keep connection state or implement provider actions.
+
+```php
+use Leantime\Core\Events\EventDispatcher;
+
+EventDispatcher::add_filter_listener(
+    'leantime.plugins.leantimelib.user.integrations.accounts',
+    static function (array $entries, array $context): array {
+        $entries[] = [
+            'id' => 'vendor.myplugin.account',
+            'label' => 'My Plugin',
+            'description' => 'Connect or manage your account.',
+            'order' => 100,
+            'render' => static fn (array $context): string => view(
+                'myplugin::account-connection',
+                ['userId' => $context['userId']]
+            )->render(),
+        ];
+        return $entries;
+    }
+);
+```
+
+Each entry needs a stable, unique provider-prefixed `id`, a non-empty `label`, and either a trusted `render` callback or a provider view plus `data` (an array or callback returning an array). `description` and integer `order` are optional. The first valid contribution for an ID wins; later duplicates are logged and skipped. Keep the filter callback declarative and inexpensive: it runs for both the tab header and panel; load connection state in the render/data callback or provider view. Render/data callbacks receive `['userId' => <current session user ID>, 'scope' => 'self']`; the Library never accepts a target user ID from the URL or contribution. The Library calls them only from Leantime 3.10.0's current-user `users/editOwn` tab and tab-content events and returns no entries if the session has no user ID. Providers own connection status, OAuth or other auth, credentials/tokens, connect/disconnect routes, permissions, CSRF checks, and action semantics. Provider action handlers must independently verify that the acting session may change the connection for that user. Keep project-specific authorization and repository configuration in the separate Project Settings contribution. Callback output and provider views are trusted plugin code; the Library escapes wrapper IDs and labels, but does not sanitize provider HTML. No provider contribution means no extra account tab.
+
 ## GUI customization surfaces
 
 The Library settings page discovers editable surfaces from the `plugins.leantimelib.gui.surfaces` filter. To-do modal, Project Settings → Integrations, and Company Settings are registered by the Library itself. A provider contributes an editor when it has a real settings preview/editor and apply path:
