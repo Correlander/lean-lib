@@ -105,16 +105,13 @@
                 if (tabs.data('ui-tabs')) {
                     tabs.tabs('refresh');
                     if (root.dataset.leantimelibCompanyHashHandler !== '1') {
-                        root.addEventListener('click', function (event) {
-                            const target = event.target instanceof Element ? event.target.closest('a[href^="#"]') : null;
-                            if (!target || !list.contains(target)) return;
+                        // Leantime 3.10.0's inline callback only writes
+                        // ui.newPanel.selector, which is undefined in jQuery UI.
+                        // Replace that option with the equivalent using the actual panel ID.
+                        tabs.tabs('option', 'activate', function (event, ui) {
+                            const panelId = ui && ui.newPanel && ui.newPanel.attr('id');
+                            if (!panelId || !panels.has(panelId)) return;
 
-                            const panelId = target.getAttribute('href').slice(1);
-                            if (!panels.has(panelId)) return;
-
-                            // Leantime 3.10.0's activate callback runs on the
-                            // tab list and writes #undefined. This root-level
-                            // handler runs after it and restores the real panel ID.
                             const hash = '#' + panelId;
                             if (window.location.hash !== hash) {
                                 window.history.replaceState(null, '', window.location.pathname + window.location.search + hash);
