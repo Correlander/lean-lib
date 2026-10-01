@@ -886,6 +886,82 @@
     function installPluginManager(manager) {
         if (manager.dataset.managerInstalled === '1') return;
         manager.dataset.managerInstalled = '1';
+        let selectionRequest = 0;
+
+        function setSelectedPlugin(folder) {
+            manager.querySelectorAll('.lt-library-manager__plugin').forEach(function (link) {
+                const selected = new URL(link.href, window.location.href).searchParams.get('libraryPlugin') === folder;
+                link.classList.toggle('is-selected', selected);
+                if (selected) link.setAttribute('aria-current', 'page');
+                else link.removeAttribute('aria-current');
+            });
+        }
+
+        async function loadSelectedPlugin(url, pushHistory) {
+            const request = ++selectionRequest;
+            const targetUrl = new URL(url, window.location.href);
+            if (targetUrl.origin !== window.location.origin || targetUrl.pathname !== window.location.pathname) return false;
+
+            const detail = manager.querySelector('.lt-library-manager__detail');
+            if (!detail) return false;
+            manager.classList.add('is-loading-plugin');
+            detail.setAttribute('aria-busy', 'true');
+
+            try {
+                const response = await fetch(targetUrl.href, {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'text/html', 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!response.ok) throw new Error('Plugin details could not be loaded.');
+                const html = await response.text();
+                if (request !== selectionRequest) return true;
+
+                const nextDocument = new DOMParser().parseFromString(html, 'text/html');
+                const nextManager = nextDocument.querySelector('[data-library-manager]');
+                const nextDetail = nextManager && nextManager.querySelector('.lt-library-manager__detail');
+                if (!nextManager || !nextDetail) throw new Error('The manager detail panel was not present in the response.');
+
+                detail.replaceWith(nextDetail);
+                const serverSelectedLink = nextManager.querySelector('.lt-library-manager__plugin[aria-current="page"]');
+                const folder = targetUrl.searchParams.get('libraryPlugin')
+                    || (serverSelectedLink ? new URL(serverSelectedLink.href, targetUrl.href).searchParams.get('libraryPlugin') : null);
+                setSelectedPlugin(folder);
+                if (pushHistory) window.history.pushState({ libraryPlugin: folder }, '', targetUrl.href);
+                return true;
+            } catch (error) {
+                if (request !== selectionRequest) return true;
+                window.location.assign(targetUrl.href);
+                return false;
+            } finally {
+                if (request === selectionRequest) {
+                    manager.classList.remove('is-loading-plugin');
+                    const currentDetail = manager.querySelector('.lt-library-manager__detail');
+                    if (currentDetail) currentDetail.removeAttribute('aria-busy');
+                }
+            }
+        }
+
+        manager.addEventListener('click', function (event) {
+            const link = event.target.closest('.lt-library-manager__plugin');
+            if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
+                || link.target || link.hasAttribute('download')) return;
+            const url = new URL(link.href, window.location.href);
+            if (url.origin !== window.location.origin || url.pathname !== window.location.pathname) return;
+            event.preventDefault();
+            if (link.classList.contains('is-selected') || url.href === window.location.href) return;
+            loadSelectedPlugin(url.href, true);
+        });
+
+        window.addEventListener('popstate', function () {
+            const folder = new URL(window.location.href).searchParams.get('libraryPlugin');
+            if (folder) setSelectedPlugin(folder);
+            else manager.querySelectorAll('.lt-library-manager__plugin').forEach((link) => {
+                link.classList.remove('is-selected');
+                link.removeAttribute('aria-current');
+            });
+            loadSelectedPlugin(window.location.href, false);
+        });
+
         manager.addEventListener('submit', function (event) {
             const form = event.target.closest('[data-plugin-remove-form]');
             if (!form) return;

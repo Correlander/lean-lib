@@ -146,6 +146,10 @@
 }
 .lt-library-manager__detail {
     padding: 1.25rem;
+    transition: opacity .16s ease;
+}
+.lt-library-manager.is-loading-plugin .lt-library-manager__detail {
+    opacity: .58;
 }
 .lt-library-manager__detail-top {
     flex-wrap: wrap;
