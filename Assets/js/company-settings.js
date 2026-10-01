@@ -102,12 +102,14 @@
         if (window.jQuery) {
             try {
                 const tabs = window.jQuery(root);
-                if (tabs.data('ui-tabs')) {
+                const configureTabs = function () {
+                    if (!tabs.data('ui-tabs')) return;
                     tabs.tabs('refresh');
                     if (root.dataset.leantimelibCompanyHashHandler !== '1') {
-                        // Leantime 3.10.0's inline callback only writes
-                        // ui.newPanel.selector, which is undefined in jQuery UI.
-                        // Replace that option with the equivalent using the actual panel ID.
+                        // The native Company Settings template initializes tabs
+                        // through jQuery ready. This envelope adapter can run
+                        // before that callback, so install the override after the
+                        // widget exists instead of silently missing initialization.
                         tabs.tabs('option', 'activate', function (event, ui) {
                             const panelId = ui && ui.newPanel && ui.newPanel.attr('id');
                             if (!panelId || !panels.has(panelId)) return;
@@ -123,6 +125,13 @@
                     const selectedTab = panels.has(activeHash) ? activeHash : ((layout.tabs || [])[0] || 'details');
                     const selectedIndex = Array.from(list.children).filter((item) => !item.hidden).findIndex((item) => item.querySelector('a[href="#' + CSS.escape(selectedTab) + '"]'));
                     if (selectedIndex >= 0) tabs.tabs('option', 'active', selectedIndex);
+                };
+
+                if (tabs.data('ui-tabs')) {
+                    configureTabs();
+                } else if (root.dataset.leantimelibCompanyTabsCreateHandler !== '1') {
+                    tabs.one('tabscreate.leantimelibCompanySettings', configureTabs);
+                    root.dataset.leantimelibCompanyTabsCreateHandler = '1';
                 }
             } catch (error) { console.warn('[LeanLib company settings] Could not refresh native tabs.', error); }
         }
