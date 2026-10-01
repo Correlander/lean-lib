@@ -44,7 +44,7 @@ $panels[] = [
 ];
 ```
 
-The `data` callback is optional when a view needs no project-specific data. The provider supplies the view and its data; the Library owns the shared outer layout, project ordering, and override UI. A trusted `render` callback remains available for unusual panels.
+The `data` callback is optional when a view needs no project-specific data. The provider supplies the view and its data; the Library owns the shared outer layout, project ordering, and override UI. A trusted `render` callback remains available for unusual panels. Multiple panels are supported; use stable provider-prefixed IDs to avoid collisions. Keep project repository settings and validation in the provider panel. The Library does not determine whether a provider allows one or multiple repository connections.
 
 ## GUI customization surfaces
 
@@ -102,6 +102,8 @@ EventDispatcher::add_filter_listener(
 ```
 
 The `tab` and `region` define a widget's initial destination. To-do Details exposes its actual `content`, `main`, `sidebar`, and `auxiliary` insertion regions. Files, Timesheet, and provider tabs expose `content`. The home region must exist on the chosen tab; unsupported regions are skipped and logged. `placement: 'any'` allows movement to regions available on the destination tab; `placement: 'region'` restricts the widget to its declared region. The editor renders only regions supported by the selected tab. Widgets share one parked pool, which means they have no active destination until restored; their last valid destination is retained. `template` may be `content`, `notice`, or `link`; the Library escapes text data and only emits HTTP(S) or site-local links. For complex markup, provide a trusted `render` callback instead; it receives `($ticket, $context)`, where `$context['widgetId']` is stable and no active-tab value is supplied. The callback must return a string of provider-owned HTML and must not emit nested forms inside the native ticket form. Project overrides store placement and parked destinations separately from instance defaults.
+
+To-do section and widget callbacks render provider-owned content on the server. Providers can include their own loading, error, or empty UI and a “more details” link to a provider-owned destination; the Library does not fetch provider data or define an async state protocol. Section callbacks return the full section body, while widget callbacks return the widget body inside a stable Library wrapper. Keep network requests, credentials, and provider-specific behavior in the provider.
 
 For general data-driven editors, providers should describe controls/components with stable IDs, labels, types, defaults, and supported placement/visibility capabilities. The Library cannot safely infer controls by inspecting arbitrary Blade output. A provider-specific editor and apply adapter is the supported fallback for complex UI.
 
