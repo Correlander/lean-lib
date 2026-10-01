@@ -34,7 +34,7 @@ EventDispatcher::add_event_listener('leantime.*.afterLinkTags', function () use 
 
 $registration->addHeaderJs(['app-preferences.js']);
 $registration->addFooterJs(['library-settings.js', 'project-integrations.js', 'todo-layout.js', 'company-settings.js']);
-$registration->addCss(['library-settings.css', 'project-integrations.css', 'company-settings.css']);
+$registration->addCss(['library-settings.css', 'project-integrations.css', 'company-settings.css', 'integrations-manager.css']);
 
 EventDispatcher::add_event_listener(
     'leantime.domain.tickets.templates.showTicketModal.ticketTabs',
